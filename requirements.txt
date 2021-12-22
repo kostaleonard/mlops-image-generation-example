@@ -1,0 +1,4 @@
+mloperations
+pylint
+pytest
+pytest-cov
