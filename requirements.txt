@@ -2,3 +2,6 @@ mloperations>=0.1.0
 pylint
 pytest
 pytest-cov
+notebook
+numpy
+matplotlib

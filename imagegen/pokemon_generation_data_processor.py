@@ -7,7 +7,6 @@ from mlops.dataset.invertible_data_processor import InvertibleDataProcessor
 
 DEFAULT_DATASET_PATH = 'data'
 IMAGES_DIRNAME = 'images'
-LABELS_FILENAME = 'pokemon.csv'
 TRAIN_SPLIT = 0.9
 VAL_SPLIT = 0.05
 HEIGHT = 120
@@ -98,7 +97,8 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
         :return: The preprocessed label tensor. This tensor is ready for
             downstream model consumption.
         """
-        return raw_label_tensor.copy()
+        # TODO custom error.
+        raise ValueError('There are no labels.')
 
     def unpreprocess_features(self, feature_tensor: np.ndarray) -> np.ndarray:
         """Returns the raw feature tensor from the preprocessed tensor; inverts
@@ -119,5 +119,7 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
         :param label_tensor: The preprocessed labels to be inverted.
         :return: The raw label tensor.
         """
-        # No preprocessing was necessary.
-        return label_tensor.copy()
+        # TODO custom error.
+        raise ValueError('There are no labels.')
+
+    # TODO function for getting a valid prediction from tensor (clip to [0, 1])
