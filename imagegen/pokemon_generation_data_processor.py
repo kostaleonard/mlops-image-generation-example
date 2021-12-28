@@ -63,7 +63,6 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
             if filename.endswith('.jpg') or filename.endswith('.png')]
         for filename in image_filenames:
             full_path = os.path.join(dataset_path, IMAGES_DIRNAME, filename)
-            # TODO add augmentation, other data enrichment.
             # Discard alpha channel.
             tensor = imread(full_path)[:, :, :3]
             if filename.endswith('.jpg'):
@@ -125,5 +124,3 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
         :return: The raw label tensor.
         """
         raise AttemptToUseLabelsError
-
-    # TODO function for getting a valid prediction from tensor (clip to [0, 1])

@@ -85,7 +85,8 @@ def test_get_raw_labels_empty() -> None:
     """Tests that the returned labels are the empty dictionary."""
     processor = PokemonGenerationDataProcessor()
     _, labels = processor.get_raw_features_and_labels(DEFAULT_DATASET_PATH)
-    assert labels == {}
+    assert isinstance(labels, dict)
+    assert not labels
 
 
 def test_preprocessed_features_same_as_raw() -> None:
