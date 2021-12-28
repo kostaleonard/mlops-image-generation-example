@@ -4,6 +4,7 @@ import os
 import numpy as np
 from matplotlib.image import imread
 from mlops.dataset.invertible_data_processor import InvertibleDataProcessor
+from imagegen.errors import AttemptToUseLabelsError
 
 DEFAULT_DATASET_PATH = 'data'
 IMAGES_DIRNAME = 'images'
@@ -56,12 +57,17 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
             and {'X_pred'} otherwise.
         """
         X = []
-        for filename in os.listdir(os.path.join(dataset_path, IMAGES_DIRNAME)):
+        image_filenames = [
+            filename for filename in
+            os.listdir(os.path.join(dataset_path, IMAGES_DIRNAME))
+            if filename.endswith('.jpg') or filename.endswith('.png')]
+        for filename in image_filenames:
             full_path = os.path.join(dataset_path, IMAGES_DIRNAME, filename)
             # TODO add augmentation, other data enrichment.
-            # TODO test that jpg images are read correctly.
             # Discard alpha channel.
             tensor = imread(full_path)[:, :, :3]
+            if filename.endswith('.jpg'):
+                tensor = tensor.astype(np.float32) / 255
             X.append(tensor)
         X = np.array(X)
         features = {}
@@ -97,8 +103,7 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
         :return: The preprocessed label tensor. This tensor is ready for
             downstream model consumption.
         """
-        # TODO custom error.
-        raise ValueError('There are no labels.')
+        raise AttemptToUseLabelsError
 
     def unpreprocess_features(self, feature_tensor: np.ndarray) -> np.ndarray:
         """Returns the raw feature tensor from the preprocessed tensor; inverts
@@ -119,7 +124,6 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
         :param label_tensor: The preprocessed labels to be inverted.
         :return: The raw label tensor.
         """
-        # TODO custom error.
-        raise ValueError('There are no labels.')
+        raise AttemptToUseLabelsError
 
     # TODO function for getting a valid prediction from tensor (clip to [0, 1])
