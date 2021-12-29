@@ -1,4 +1,4 @@
-"""Loads a VersionedModel and uses it to generate new images."""
+"""Loads a GAN from VersionedModels and uses it to generate new images."""
 
 import os
 import matplotlib.pyplot as plt
@@ -6,8 +6,8 @@ from mlops.model.versioned_model import VersionedModel
 from imagegen.gan import GAN
 from imagegen.train_model import MODEL_PUBLICATION_PATH_LOCAL
 
-NUM_SAMPLE_ROWS = 4
-NUM_SAMPLE_COLS = 4
+NUM_SAMPLE_ROWS = 8
+NUM_SAMPLE_COLS = 8
 
 
 def get_gan(versioned_model_base_path: str) -> GAN:
@@ -43,8 +43,8 @@ def main() -> None:
     most_recent = model_paths[-1]
     gan = get_gan(most_recent)
     images = gan.generate(NUM_SAMPLE_ROWS * NUM_SAMPLE_COLS)
-    image_grid = GAN._concatenate_images(images, NUM_SAMPLE_ROWS,
-                                         NUM_SAMPLE_COLS)
+    image_grid = GAN.concatenate_images(images, NUM_SAMPLE_ROWS,
+                                        NUM_SAMPLE_COLS)
     plt.imshow(image_grid)
     plt.show()
 

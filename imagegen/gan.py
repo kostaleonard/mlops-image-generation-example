@@ -4,6 +4,7 @@ positive class is used to denote real images.
 
 This model syncs with WandB.
 """
+# pylint: disable=no-name-in-module
 
 from typing import Optional
 import time
@@ -13,9 +14,9 @@ import tensorflow as tf
 from tensorflow.keras.models import Model, load_model as tf_load_model
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.callbacks import History
-import wandb
 from mlops.dataset.versioned_dataset import VersionedDataset
 from mlops.model.training_config import TrainingConfig
+import wandb
 from imagegen.errors import GANShapeError, GANHasNoOptimizerError
 
 DEFAULT_EPOCHS = 5
@@ -145,7 +146,6 @@ class GAN:
         :return: A 2-tuple of the generator and discriminator losses on the
             batch.
         """
-        # pylint: disable=invalid-name
         noise = tf.random.normal((len(X_batch), self.gen_input_dim))
         with tf.GradientTape() as gen_tape, tf.GradientTape() as dis_tape:
             generated_images = self.generator(noise, training=True)
@@ -184,6 +184,7 @@ class GAN:
         :return: The training History object.
         """
         # pylint: disable=too-many-locals, too-many-statements
+        # pylint: disable=too-many-arguments
         train_hyperparams = locals()
         train_hyperparams.pop('self')
         train_hyperparams.pop('dataset')
@@ -244,7 +245,7 @@ class GAN:
                 if epoch in generate_images_epochs:
                     generated_batch = self.generate(
                         WANDB_IMAGE_ROWS * WANDB_IMAGE_COLS)
-                    concatenated_images = GAN._concatenate_images(
+                    concatenated_images = GAN.concatenate_images(
                         generated_batch, WANDB_IMAGE_ROWS, WANDB_IMAGE_COLS)
                     images = wandb.Image(
                         concatenated_images,
@@ -255,6 +256,7 @@ class GAN:
                 tmp_discriminator_filename = '/tmp/gan_discriminator.h5'
                 self.save_model(tmp_generator_filename,
                                 tmp_discriminator_filename)
+                # pylint: disable=unexpected-keyword-arg
                 wandb.save(tmp_generator_filename, base_path='/tmp')
                 wandb.save(tmp_discriminator_filename, base_path='/tmp')
             history.history['epoch'].append(epoch)
@@ -289,9 +291,9 @@ class GAN:
         return self.generator(noise)
 
     @staticmethod
-    def _concatenate_images(images: np.ndarray,
-                            rows: int,
-                            cols: int) -> np.ndarray:
+    def concatenate_images(images: np.ndarray,
+                           rows: int,
+                           cols: int) -> np.ndarray:
         """Returns a single image that is the concatenation of the (rows * cols)
         images into the specified number of rows and columns; a tensor of shape
         (h * rows) x (w * cols) x c, where images is of shape
