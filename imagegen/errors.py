@@ -10,3 +10,10 @@ class AttemptToUseLabelsError(ValueError):
 class GANShapeError(ValueError):
     """Raised when a GAN is initialized with generator/discriminator models that
     have incorrect input or output shapes."""
+
+
+class GANHasNoOptimizerError(ValueError):
+    """Raised when a GAN is initialized with generator/discriminator models that
+    do not have optimizers. This error can be remedied by compiling the model
+    (an optimizer will be initialized by default, but one can also be supplied
+    as an argument to compile)."""
