@@ -109,12 +109,12 @@ def get_baseline_gan(dataset: VersionedDataset) -> GAN:
     return GAN(generator, discriminator)
 
 
-def publish_model(gan: GAN,
-                  dataset: VersionedDataset,
-                  training_config: TrainingConfig,
-                  publication_path: str,
-                  tags: Optional[list[str]] = None) -> str:
-    """Publishes the model to the path on the local or remote filesystem.
+def publish_gan(gan: GAN,
+                dataset: VersionedDataset,
+                training_config: TrainingConfig,
+                publication_path: str,
+                tags: Optional[list[str]] = None) -> str:
+    """Publishes the GAN to the path on the local or remote filesystem.
 
     :param gan: The GAN to be published, with the exact weights desired for
         publication (the user needs to set the weights to the best found during
@@ -148,7 +148,7 @@ def main() -> None:
     dataset = VersionedDataset(dataset_path)
     gan = get_baseline_gan(dataset)
     training_config = gan.train(dataset)
-    publish_model(
+    publish_gan(
         gan,
         dataset,
         training_config,

@@ -195,9 +195,10 @@ class GAN:
             f'{model_checkpoint_prefix}_discriminator.h5'
         if use_wandb:
             all_hyperparams = {**self.model_hyperparams, **train_hyperparams}
-            wandb.init(project=WANDB_PROJECT_TITLE,
-                       dir='.',
-                       config=all_hyperparams)
+            wandb_run = wandb.init(project=WANDB_PROJECT_TITLE,
+                                   dir='.',
+                                   config=all_hyperparams,
+                                   reinit=True)
             wandb.run.summary['generator_graph'] = wandb.Graph.from_keras(
                 self.generator)
             wandb.run.summary['discriminator_graph'] = wandb.Graph.from_keras(
@@ -276,6 +277,7 @@ class GAN:
             wandb.run.summary['best_gen_loss'] = best_gen_loss
             wandb.run.summary['best_dis_epoch'] = best_dis_epoch
             wandb.run.summary['best_dis_loss'] = best_dis_loss
+            wandb_run.finish()
         return TrainingConfig(history, train_hyperparams)
 
     def generate(self, num_samples: int) -> np.ndarray:
