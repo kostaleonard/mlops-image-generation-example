@@ -5,3 +5,6 @@ pytest-cov
 notebook
 numpy
 matplotlib
+tqdm
+wandb
+tensorflow
