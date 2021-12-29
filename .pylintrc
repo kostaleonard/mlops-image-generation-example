@@ -394,7 +394,8 @@ good-names=i,
            X,
            X_train,
            X_val,
-           X_test
+           X_test,
+           X_batch
 
 # Good variable names regexes, separated by a comma. If names match any regex,
 # they will always be accepted

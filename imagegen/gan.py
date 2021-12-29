@@ -2,10 +2,9 @@
 dataset. The model will generate images of never-before-seen pokemon. The
 positive class is used to denote real images.
 
-This model syncs with WandB and allows greater control over hyperparameters.
+This model syncs with WandB.
 """
 
-from abc import ABC, abstractmethod
 from typing import Optional
 import time
 from tqdm import tqdm
@@ -13,7 +12,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model, load_model as tf_load_model
 from tensorflow.keras.losses import BinaryCrossentropy
-from tensorflow.keras.optimizers import Optimizer, Adam
 from tensorflow.keras.callbacks import History
 import wandb
 from mlops.dataset.versioned_dataset import VersionedDataset
@@ -29,45 +27,42 @@ WANDB_IMAGE_ROWS = 4
 WANDB_IMAGE_COLS = 4
 
 
-class GAN(ABC):
+class GAN:
     """Represents a generative adversarial network model."""
 
-    def __init__(self,
-                 gen_output_shape: tuple[int],
-                 gen_input_dim: int = DEFAULT_GEN_INPUT_DIM) -> None:
+    def __init__(self, generator: Model, discriminator: Model) -> None:
         """Instantiates the GAN.
 
-        :param gen_output_shape: The shape of generated outputs (less the first
-            dimension that indicates the number of examples). For images, this
-            would likely be h x w x c, where h is the image height, w is the
-            image width, and c is the number of channels.
-        :param gen_input_dim: The size of the noise vector that the generator
-            uses as input.
+        :param generator: The compiled generator model. Generates new images.
+            The input shape must be m x n, where m is the number of examples
+            and n is the length of the noise vector that the generator uses as
+            input. The output shape must be m x h x w x c, where m is the number
+            of examples, h is the image height, w is the image width, and c is
+            the image channels. The output must be in the range [0, 1].
+        :param discriminator: The compiled discriminator model. Classifies
+            images as either real or fake. The input shape must be
+            m x h x w x c, the same shape as the output of the generator. The
+            output shape must be m x 1, where the output represents the
+            probability that each example is real. This output must be in the
+            range [0, 1].
         """
-        self.model_hyperparams = locals()
-        self.model_hyperparams.pop('self')
-        self.gen_output_shape = gen_output_shape
-        self.gen_input_dim = gen_input_dim
-        self._generator = self._get_new_generator()
-        self._discriminator = self._get_new_discriminator()
-        # TODO raise error if shapes are incompatible
-
-    @abstractmethod
-    def _get_new_generator(self) -> Model:
-        """Returns a new instance of the GAN's generator model. Subclasses
-        determine this architecture. The output must be of shape
-        self.gen_output_shape.
-
-        :return: A new instance of the GAN's generator model.
-        """
-
-    @abstractmethod
-    def _get_new_discriminator(self) -> Model:
-        """Returns a new instance of the GAN's discriminator model. Subclasses
-        determine this architecture.
-
-        :return: A new instance of the GAN's discriminator model.
-        """
+        # TODO custom/better errors
+        if len(generator.input_shape) != 2:
+            raise ValueError('Too many inputs')
+        if len(generator.output_shape) != 4:
+            raise ValueError('Generator outputs are not images')
+        if generator.output_shape != discriminator.input_shape:
+            raise ValueError('Generator/discriminator dimension mismatch')
+        if discriminator.output_shape[1:] != (1,):
+            raise ValueError('Too many discriminator outputs')
+        self.gen_output_shape = generator.output_shape[1:]
+        self.gen_input_dim = generator.input_shape[1]
+        self.model_hyperparams = {
+            'gen_input_dim': self.gen_input_dim,
+            'gen_output_shape': self.gen_output_shape
+        }
+        self.generator = generator
+        self.discriminator = discriminator
 
     def save_model(self,
                    generator_filename: str,
@@ -78,25 +73,20 @@ class GAN(ABC):
         :param discriminator_filename: The path to which to save the
             discriminator.
         """
-        # TODO how does this interact with versionedmodel?
-        self._generator.save(generator_filename)
-        self._discriminator.save(discriminator_filename)
+        self.generator.save(generator_filename)
+        self.discriminator.save(discriminator_filename)
 
     @staticmethod
-    def load_model(generator_filename: str,
-                   discriminator_filename: str) -> tuple[Model, Model]:
-        """Returns the generator and discriminator networks saved at the
-        specified locations.
+    def load(generator_filename: str, discriminator_filename: str) -> 'GAN':
+        """Returns the GAN loaded from the generator and discriminator files.
 
         :param generator_filename: The path to the saved generator.
         :param discriminator_filename: The path to the saved discriminator.
-        :return: A 2-tuple of the loaded generator and discriminator,
-            respectively.
+        :return: The GAN loaded from the generator and discriminator files.
         """
-        # TODO how does this interact with versionedmodel?
         generator = tf_load_model(generator_filename)
         discriminator = tf_load_model(discriminator_filename)
-        return generator, discriminator
+        return GAN(generator, discriminator)
 
     @staticmethod
     def _generator_loss(fake_output: np.ndarray) -> float:
@@ -138,10 +128,7 @@ class GAN(ABC):
         return real_loss + fake_loss
 
     @tf.function
-    def _train_step(self,
-                    X_batch: np.ndarray,
-                    gen_optimizer: Optimizer,
-                    dis_optimizer: Optimizer) -> tuple[float, float]:
+    def _train_step(self, X_batch: np.ndarray) -> tuple[float, float]:
         """Runs one batch of images through the model, computes the loss, and
         applies the gradients to the model; returns the generator and
         discriminator losses on the batch.
@@ -149,29 +136,25 @@ class GAN(ABC):
         :param X_batch: A batch of input images; a tensor of shape m x h x w x
             c, where m is the batch size, h is the image height, w is the image
             width, and c is the number of channels.
-        :param gen_optimizer: The optimizer that will minimize the
-            generator loss using the gradient information.
-        :param dis_optimizer: The optimizer that will minimize the
-            discriminator loss using the gradient information.
         :return: A 2-tuple of the generator and discriminator losses on the
             batch.
         """
         # pylint: disable=invalid-name
         noise = tf.random.normal((len(X_batch), self.gen_input_dim))
         with tf.GradientTape() as gen_tape, tf.GradientTape() as dis_tape:
-            generated_images = self._generator(noise, training=True)
-            real_output = self._discriminator(X_batch, training=True)
-            fake_output = self._discriminator(generated_images, training=True)
+            generated_images = self.generator(noise, training=True)
+            real_output = self.discriminator(X_batch, training=True)
+            fake_output = self.discriminator(generated_images, training=True)
             gen_loss = GAN._generator_loss(fake_output)
             dis_loss = GAN._discriminator_loss(real_output, fake_output)
         gen_gradients = gen_tape.gradient(
-            gen_loss, self._generator.trainable_variables)
+            gen_loss, self.generator.trainable_variables)
         dis_gradients = dis_tape.gradient(
-            dis_loss, self._discriminator.trainable_variables)
-        gen_optimizer.apply_gradients(
-            zip(gen_gradients, self._generator.trainable_variables))
-        dis_optimizer.apply_gradients(
-            zip(dis_gradients, self._discriminator.trainable_variables))
+            dis_loss, self.discriminator.trainable_variables)
+        self.generator.optimizer.apply_gradients(
+            zip(gen_gradients, self.generator.trainable_variables))
+        self.discriminator.optimizer.apply_gradients(
+            zip(dis_gradients, self.discriminator.trainable_variables))
         return gen_loss, dis_loss
 
     def train(self,
@@ -209,11 +192,9 @@ class GAN(ABC):
                        dir='.',
                        config=all_hyperparams)
             wandb.run.summary['generator_graph'] = wandb.Graph.from_keras(
-                self._generator)
+                self.generator)
             wandb.run.summary['discriminator_graph'] = wandb.Graph.from_keras(
-                self._discriminator)
-        gen_optimizer = Adam(1e-4)
-        dis_optimizer = Adam(1e-4)
+                self.discriminator)
         train_dataset = tf.data.Dataset \
             .from_tensor_slices(dataset.X_train) \
             .shuffle(len(dataset.X_train)) \
@@ -233,8 +214,7 @@ class GAN(ABC):
             num_batches = 0
             start_time = time.time()
             for train_batch in tqdm(train_dataset):
-                gen_loss_batch, dis_loss_batch = self._train_step(
-                    train_batch, gen_optimizer, dis_optimizer)
+                gen_loss_batch, dis_loss_batch = self._train_step(train_batch)
                 gen_loss += gen_loss_batch
                 dis_loss += dis_loss_batch
                 num_batches += 1
@@ -278,11 +258,11 @@ class GAN(ABC):
         if use_wandb:
             best_gen_epoch = min(
                 history.history['epoch'],
-                key=lambda epoch: history.history['gen_loss'][epoch])
+                key=lambda gen_epoch: history.history['gen_loss'][gen_epoch])
             best_gen_loss = history.history['gen_loss'][best_gen_epoch]
             best_dis_epoch = min(
                 history.history['epoch'],
-                key=lambda epoch: history.history['dis_loss'][epoch])
+                key=lambda dis_epoch: history.history['dis_loss'][dis_epoch])
             best_dis_loss = history.history['dis_loss'][best_dis_epoch]
             wandb.run.summary['best_gen_epoch'] = best_gen_epoch
             wandb.run.summary['best_gen_loss'] = best_gen_loss
@@ -297,11 +277,10 @@ class GAN(ABC):
         :param num_samples: The number of images to generate.
         :return: A batch of generated images; a tensor of shape num_samples x
             h x w x c, where h is the image height, w is the image width, and c
-            is the number of channels.
+            is the number of channels. All values are in the range [0, 1].
         """
-        # TODO clip output to [0, 1]
         noise = tf.random.normal((num_samples, self.gen_input_dim))
-        return self._generator(noise)
+        return self.generator(noise)
 
     @staticmethod
     def _concatenate_images(images: np.ndarray,
