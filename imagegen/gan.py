@@ -15,6 +15,7 @@ from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.callbacks import History
 import wandb
 from mlops.dataset.versioned_dataset import VersionedDataset
+from imagegen.errors import GANShapeError
 
 DEFAULT_EPOCHS = 5
 DEFAULT_BATCH_SIZE = 32
@@ -46,15 +47,16 @@ class GAN:
             probability that each example is real. This output must be in the
             range [0, 1].
         """
-        # TODO custom/better errors
         if len(generator.input_shape) != 2:
-            raise ValueError('Too many inputs')
+            raise GANShapeError('Generator input must be of shape (m, n)')
         if len(generator.output_shape) != 4:
-            raise ValueError('Generator outputs are not images')
+            raise GANShapeError('Generator output must be of shape '
+                                '(m, h, w, c)')
         if generator.output_shape != discriminator.input_shape:
-            raise ValueError('Generator/discriminator dimension mismatch')
+            raise GANShapeError('Generator output shape must match '
+                                'discriminator input shape')
         if discriminator.output_shape[1:] != (1,):
-            raise ValueError('Too many discriminator outputs')
+            raise GANShapeError('Discriminator output must be of shape (m, 1)')
         self.gen_output_shape = generator.output_shape[1:]
         self.gen_input_dim = generator.input_shape[1]
         self.model_hyperparams = {
