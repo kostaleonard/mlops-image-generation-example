@@ -6,7 +6,7 @@ import pytest
 import matplotlib
 import matplotlib.pyplot as plt
 from mlops.dataset.versioned_dataset import VersionedDataset
-from imagegen.publish_dataset import publish_dataset, DATASET_VERSION
+from imagegen.publish_dataset import DATASET_VERSION
 from imagegen.train_model import get_baseline_gan, publish_gan, \
     main as train_model_main
 from imagegen.gan import GAN
@@ -36,16 +36,14 @@ def test_get_gan_returns_gan() -> None:
     loaded_gan = model_generate.get_gan(base_path)
     assert isinstance(loaded_gan, GAN)
     gen_summary = []
-    gan.generator.summary(print_fn=lambda x: gen_summary.append(x))
+    gan.generator.summary(print_fn=gen_summary.append)
     loaded_gen_summary = []
-    loaded_gan.generator.summary(
-        print_fn=lambda x: loaded_gen_summary.append(x))
+    loaded_gan.generator.summary(print_fn=loaded_gen_summary.append)
     assert gen_summary == loaded_gen_summary
     dis_summary = []
-    gan.discriminator.summary(print_fn=lambda x: dis_summary.append(x))
+    gan.discriminator.summary(print_fn=dis_summary.append)
     loaded_dis_summary = []
-    loaded_gan.discriminator.summary(
-        print_fn=lambda x: loaded_dis_summary.append(x))
+    loaded_gan.discriminator.summary(print_fn=loaded_dis_summary.append)
     assert dis_summary == loaded_dis_summary
 
 
