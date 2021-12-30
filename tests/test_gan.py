@@ -2,48 +2,143 @@
 
 import pytest
 import numpy as np
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Input, Reshape, Dense, Flatten
 from imagegen.gan import GAN, GANShapeError, GANHasNoOptimizerError
+
+TEST_NOISE = 128
+TEST_HEIGHT = 1
+TEST_WIDTH = 2
+TEST_CHANNELS = 3
+EXPECTED_GAN_ATTRIBUTES = {'generator', 'discriminator', 'model_hyperparams'}
 
 # TODO mark slowtests
 
 
 def test_init_raises_error_on_bad_generator_input_shape() -> None:
     """Tests that init raises an error on an invalid generator input shape."""
-    # TODO
-    assert False
+    generator = Sequential([
+        # Extra first dimension.
+        Input((1, TEST_NOISE)),
+        Flatten(),
+        Dense(TEST_HEIGHT * TEST_WIDTH * TEST_CHANNELS),
+        Reshape((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS))
+    ])
+    discriminator = Sequential([
+        Input((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS)),
+        Flatten(),
+        Dense(1)
+    ])
+    generator.compile()
+    discriminator.compile()
+    with pytest.raises(GANShapeError):
+        _ = GAN(generator, discriminator)
 
 
 def test_init_raises_error_on_bad_generator_output_shape() -> None:
     """Tests that init raises an error on an invalid generator output shape."""
-    # TODO
-    assert False
+    generator = Sequential([
+        Input((TEST_NOISE,)),
+        Flatten(),
+        # Flattened output.
+        Dense(TEST_HEIGHT * TEST_WIDTH * TEST_CHANNELS)
+    ])
+    discriminator = Sequential([
+        Input((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS)),
+        Flatten(),
+        Dense(1)
+    ])
+    generator.compile()
+    discriminator.compile()
+    with pytest.raises(GANShapeError):
+        _ = GAN(generator, discriminator)
 
 
 def test_init_raises_error_on_generator_discriminator_shape_mismatch() -> None:
     """Tests that init raises an error when the generator output shape is not
     the same as the generator input shape."""
-    # TODO
-    assert False
+    generator = Sequential([
+        Input((TEST_NOISE,)),
+        Flatten(),
+        # One fewer channel than discriminator.
+        Dense(TEST_HEIGHT * TEST_WIDTH * (TEST_CHANNELS - 1)),
+        Reshape((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS - 1))
+    ])
+    discriminator = Sequential([
+        Input((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS)),
+        Flatten(),
+        Dense(1)
+    ])
+    generator.compile()
+    discriminator.compile()
+    with pytest.raises(GANShapeError):
+        _ = GAN(generator, discriminator)
 
 
 def test_init_raises_error_on_bad_discriminator_output_shape() -> None:
     """Tests that init raises an error on an invalid discriminator output
     shape."""
-    # TODO
-    assert False
+    generator = Sequential([
+        Input((TEST_NOISE,)),
+        Flatten(),
+        Dense(TEST_HEIGHT * TEST_WIDTH * TEST_CHANNELS),
+        Reshape((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS))
+    ])
+    discriminator = Sequential([
+        Input((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS)),
+        Flatten(),
+        # Extra classifier output.
+        Dense(2)
+    ])
+    generator.compile()
+    discriminator.compile()
+    with pytest.raises(GANShapeError):
+        _ = GAN(generator, discriminator)
 
 
 def test_init_raises_error_on_missing_optimizer() -> None:
     """Tests that init raises an error when the generator or discriminator is
     missing an optimizer."""
-    # TODO test generator and discriminator
-    assert False
+    generator = Sequential([
+        Input((TEST_NOISE,)),
+        Flatten(),
+        Dense(TEST_HEIGHT * TEST_WIDTH * TEST_CHANNELS),
+        Reshape((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS))
+    ])
+    discriminator = Sequential([
+        Input((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS)),
+        Flatten(),
+        Dense(1)
+    ])
+    # Neither generator nor discriminator have optimizers.
+    with pytest.raises(GANHasNoOptimizerError):
+        _ = GAN(generator, discriminator)
+    generator.compile()
+    # Discriminator still does not have an optimizer.
+    with pytest.raises(GANHasNoOptimizerError):
+        _ = GAN(generator, discriminator)
+    discriminator.compile()
+    _ = GAN(generator, discriminator)
 
 
 def test_init_creates_expected_attributes() -> None:
     """Tests that init creates the expected object attributes."""
-    # TODO
-    assert False
+    generator = Sequential([
+        Input((TEST_NOISE,)),
+        Flatten(),
+        Dense(TEST_HEIGHT * TEST_WIDTH * TEST_CHANNELS),
+        Reshape((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS))
+    ])
+    discriminator = Sequential([
+        Input((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS)),
+        Flatten(),
+        Dense(1)
+    ])
+    generator.compile()
+    discriminator.compile()
+    gan = GAN(generator, discriminator)
+    for attr_name in EXPECTED_GAN_ATTRIBUTES:
+        assert hasattr(gan, attr_name)
 
 
 def test_save_creates_expected_files() -> None:

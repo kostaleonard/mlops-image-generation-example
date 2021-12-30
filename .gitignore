@@ -3,7 +3,7 @@
 __pycache__
 *.swp
 datasets
-models_tmp
+models
 scrap
 wandb
 
