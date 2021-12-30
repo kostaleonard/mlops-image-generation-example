@@ -5,7 +5,12 @@ import pytest
 import numpy as np
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Input, Reshape, Dense, Flatten
+from mlops.dataset.versioned_dataset import VersionedDataset
+from imagegen.publish_dataset import DATASET_VERSION
+from imagegen.train_model import get_baseline_gan
 from imagegen.gan import GAN, GANShapeError, GANHasNoOptimizerError
+from tests.test_train_model import TEST_DATASET_PUBLICATION_PATH_LOCAL, \
+    _create_dataset
 
 # For the purposes of several tests, we have the following models.
 # Generator: Takes length 4 noise vectors as input and outputs 1 x 2 x 3 images.
@@ -243,11 +248,22 @@ def test_discriminator_loss() -> None:
            GAN._discriminator_loss(bad_real, bad_fake)
 
 
+@pytest.mark.slowtest
 def test_train_step_updates_weights() -> None:
     """Tests that _train_step updates the generator and discriminator
     weights."""
-    # TODO
-    assert False
+    _create_dataset()
+    dataset = VersionedDataset(os.path.join(
+        TEST_DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION))
+    gan = get_baseline_gan(dataset)
+    img_batch = dataset.X_train[:2]
+    gen_weights_before = gan.generator.trainable_variables[-1].numpy()
+    dis_weights_before = gan.discriminator.trainable_variables[-1].numpy()
+    _ = gan._train_step(img_batch)
+    gen_weights_after = gan.generator.trainable_variables[-1].numpy()
+    dis_weights_after = gan.discriminator.trainable_variables[-1].numpy()
+    assert not (gen_weights_after == gen_weights_before).all()
+    assert not (dis_weights_after == dis_weights_before).all()
 
 
 def test_train_step_returns_losses() -> None:
