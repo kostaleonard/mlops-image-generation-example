@@ -13,6 +13,7 @@ from imagegen.gan import GAN
 from imagegen import model_generate
 from tests.test_train_model import TEST_DATASET_PUBLICATION_PATH_LOCAL, \
     TEST_MODEL_PUBLICATION_PATH_LOCAL, _create_dataset
+from tests.test_gan import _gan_architecture_is_equal
 matplotlib.use('Agg')
 
 
@@ -35,16 +36,7 @@ def test_get_gan_returns_gan() -> None:
         TEST_MODEL_PUBLICATION_PATH_LOCAL)
     loaded_gan = model_generate.get_gan(base_path)
     assert isinstance(loaded_gan, GAN)
-    gen_summary = []
-    gan.generator.summary(print_fn=gen_summary.append)
-    loaded_gen_summary = []
-    loaded_gan.generator.summary(print_fn=loaded_gen_summary.append)
-    assert gen_summary == loaded_gen_summary
-    dis_summary = []
-    gan.discriminator.summary(print_fn=dis_summary.append)
-    loaded_dis_summary = []
-    loaded_gan.discriminator.summary(print_fn=loaded_dis_summary.append)
-    assert dis_summary == loaded_dis_summary
+    assert _gan_architecture_is_equal(gan, loaded_gan)
 
 
 def test_get_gan_invalid_path_raises_error() -> None:

@@ -1,18 +1,67 @@
 """Tests gan.py."""
 
+import os
 import pytest
 import numpy as np
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Input, Reshape, Dense, Flatten
 from imagegen.gan import GAN, GANShapeError, GANHasNoOptimizerError
 
-TEST_NOISE = 128
+# For the purposes of several tests, we have the following models.
+# Generator: Takes length 4 noise vectors as input and outputs 1 x 2 x 3 images.
+# Discriminator: Takes 1 x 2 x 3 images as input and outputs length 1 classes.
+TEST_NOISE = 4
 TEST_HEIGHT = 1
 TEST_WIDTH = 2
 TEST_CHANNELS = 3
 EXPECTED_GAN_ATTRIBUTES = {'generator', 'discriminator', 'model_hyperparams'}
+TEST_GENERATOR_FILENAME = '/tmp/test_gan/generator.h5'
+TEST_DISCRIMINATOR_FILENAME = '/tmp/test_gan/discriminator.h5'
 
 # TODO mark slowtests
+
+
+def _get_test_generator() -> Model:
+    """Returns a test GAN generator.
+
+    :return: A test GAN generator.
+    """
+    return Sequential([
+        Input((TEST_NOISE,)),
+        Flatten(),
+        Dense(TEST_HEIGHT * TEST_WIDTH * TEST_CHANNELS),
+        Reshape((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS))
+    ])
+
+
+def _get_test_discriminator() -> Model:
+    """Returns a test GAN discriminator.
+
+    :return: A test GAN discriminator.
+    """
+    return Sequential([
+        Input((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS)),
+        Flatten(),
+        Dense(1)
+    ])
+
+
+def _gan_architecture_is_equal(gan1: GAN, gan2: GAN) -> bool:
+    """Returns True if the two GANs have the same architecture, False otherwise.
+
+    :param gan1: The first GAN.
+    :param gan2: The second GAN.
+    :return: True if the two GANS have the same architecture, False otherwise.
+    """
+    gen1_summary = []
+    gan1.generator.summary(print_fn=gen1_summary.append)
+    gen2_summary = []
+    gan2.generator.summary(print_fn=gen2_summary.append)
+    dis1_summary = []
+    gan1.discriminator.summary(print_fn=dis1_summary.append)
+    dis2_summary = []
+    gan2.discriminator.summary(print_fn=dis2_summary.append)
+    return gen1_summary == gen2_summary and dis1_summary == dis2_summary
 
 
 def test_init_raises_error_on_bad_generator_input_shape() -> None:
@@ -99,17 +148,8 @@ def test_init_raises_error_on_bad_discriminator_output_shape() -> None:
 def test_init_raises_error_on_missing_optimizer() -> None:
     """Tests that init raises an error when the generator or discriminator is
     missing an optimizer."""
-    generator = Sequential([
-        Input((TEST_NOISE,)),
-        Flatten(),
-        Dense(TEST_HEIGHT * TEST_WIDTH * TEST_CHANNELS),
-        Reshape((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS))
-    ])
-    discriminator = Sequential([
-        Input((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS)),
-        Flatten(),
-        Dense(1)
-    ])
+    generator = _get_test_generator()
+    discriminator = _get_test_discriminator()
     # Neither generator nor discriminator have optimizers.
     with pytest.raises(GANHasNoOptimizerError):
         _ = GAN(generator, discriminator)
@@ -123,17 +163,8 @@ def test_init_raises_error_on_missing_optimizer() -> None:
 
 def test_init_creates_expected_attributes() -> None:
     """Tests that init creates the expected object attributes."""
-    generator = Sequential([
-        Input((TEST_NOISE,)),
-        Flatten(),
-        Dense(TEST_HEIGHT * TEST_WIDTH * TEST_CHANNELS),
-        Reshape((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS))
-    ])
-    discriminator = Sequential([
-        Input((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS)),
-        Flatten(),
-        Dense(1)
-    ])
+    generator = _get_test_generator()
+    discriminator = _get_test_discriminator()
     generator.compile()
     discriminator.compile()
     gan = GAN(generator, discriminator)
@@ -143,15 +174,37 @@ def test_init_creates_expected_attributes() -> None:
 
 def test_save_creates_expected_files() -> None:
     """Tests that save creates the expected model save files."""
-    # TODO
-    assert False
+    for filename in TEST_GENERATOR_FILENAME, TEST_DISCRIMINATOR_FILENAME:
+        try:
+            os.remove(filename)
+        except FileNotFoundError:
+            pass
+    generator = _get_test_generator()
+    discriminator = _get_test_discriminator()
+    generator.compile()
+    discriminator.compile()
+    gan = GAN(generator, discriminator)
+    gan.save(TEST_GENERATOR_FILENAME, TEST_DISCRIMINATOR_FILENAME)
+    assert os.path.exists(TEST_GENERATOR_FILENAME)
+    assert os.path.exists(TEST_DISCRIMINATOR_FILENAME)
 
 
 def test_load_models_match() -> None:
     """Tests that load creates a GAN whose models match those of the GAN that
     was saved."""
-    # TODO
-    assert False
+    for filename in TEST_GENERATOR_FILENAME, TEST_DISCRIMINATOR_FILENAME:
+        try:
+            os.remove(filename)
+        except FileNotFoundError:
+            pass
+    generator = _get_test_generator()
+    discriminator = _get_test_discriminator()
+    generator.compile()
+    discriminator.compile()
+    gan = GAN(generator, discriminator)
+    gan.save(TEST_GENERATOR_FILENAME, TEST_DISCRIMINATOR_FILENAME)
+    loaded_gan = GAN.load(TEST_GENERATOR_FILENAME, TEST_DISCRIMINATOR_FILENAME)
+    assert _gan_architecture_is_equal(gan, loaded_gan)
 
 
 def test_generator_loss() -> None:
