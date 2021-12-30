@@ -126,6 +126,7 @@ def publish_gan(gan: GAN,
     :param tags: Optional tags for the published model.
     :return: The base path to the versioned generator and discriminator models.
     """
+    tags = tags or []
     timestamp = datetime.now().isoformat()
     base_path = os.path.join(publication_path, timestamp)
     gen_publication_path = os.path.join(base_path, 'generator')

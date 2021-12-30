@@ -11,5 +11,17 @@ pylint:
 	pylint tests
 
 pytest:
+	pytest -m "not slowtest and not awstest" --cov=imagegen tests
+	coverage xml
+
+pytest_slow:
+	pytest -m "slowtest" --cov=imagegen tests
+	coverage xml
+
+pytest_aws:
+	pytest -m "awstest" --cov=imagegen tests
+	coverage xml
+
+pytest_full:
 	pytest --cov=imagegen tests
 	coverage xml
