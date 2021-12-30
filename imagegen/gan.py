@@ -290,7 +290,7 @@ class GAN:
             is the number of channels. All values are in the range [0, 1].
         """
         noise = tf.random.normal((num_samples, self.gen_input_dim))
-        return self.generator(noise)
+        return self.generator(noise).numpy()
 
     @staticmethod
     def concatenate_images(images: np.ndarray,

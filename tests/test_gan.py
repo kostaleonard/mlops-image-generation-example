@@ -5,6 +5,7 @@ import pytest
 import numpy as np
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Input, Reshape, Dense, Flatten
+from tensorflow.keras.callbacks import History
 from mlops.dataset.versioned_dataset import VersionedDataset
 from imagegen.publish_dataset import DATASET_VERSION
 from imagegen.train_model import get_baseline_gan
@@ -22,6 +23,9 @@ TEST_CHANNELS = 3
 EXPECTED_GAN_ATTRIBUTES = {'generator', 'discriminator', 'model_hyperparams'}
 TEST_GENERATOR_FILENAME = '/tmp/test_gan/generator.h5'
 TEST_DISCRIMINATOR_FILENAME = '/tmp/test_gan/discriminator.h5'
+TEST_CKPT_PREFIX = '/tmp/test_gan/ckpt'
+TEST_CKPT_GENERATOR = f'{TEST_CKPT_PREFIX}_generator.h5'
+TEST_CKPT_DISCRIMINATOR = f'{TEST_CKPT_PREFIX}_discriminator.h5'
 
 # TODO mark slowtests
 
@@ -34,7 +38,7 @@ def _get_test_generator() -> Model:
     return Sequential([
         Input((TEST_NOISE,)),
         Flatten(),
-        Dense(TEST_HEIGHT * TEST_WIDTH * TEST_CHANNELS),
+        Dense(TEST_HEIGHT * TEST_WIDTH * TEST_CHANNELS, activation='sigmoid'),
         Reshape((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS))
     ])
 
@@ -47,7 +51,7 @@ def _get_test_discriminator() -> Model:
     return Sequential([
         Input((TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS)),
         Flatten(),
-        Dense(1)
+        Dense(1, activation='sigmoid')
     ])
 
 
@@ -266,24 +270,53 @@ def test_train_step_updates_weights() -> None:
     assert not (dis_weights_after == dis_weights_before).all()
 
 
+@pytest.mark.slowtest
 def test_train_step_returns_losses() -> None:
     """Tests that _train_step returns a tuple of generator and discriminator
     losses."""
-    # TODO
-    assert False
+    _create_dataset()
+    dataset = VersionedDataset(os.path.join(
+        TEST_DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION))
+    gan = get_baseline_gan(dataset)
+    img_batch = dataset.X_train[:2]
+    gen_loss, dis_loss = gan._train_step(img_batch)
+    assert gen_loss > 0
+    assert dis_loss > 0
 
 
+@pytest.mark.slowtest
 def test_train_returns_expected_training_config() -> None:
     """Tests that train returns the TrainingConfig object with the expected
     values."""
-    # TODO probably slow
-    assert False
+    _create_dataset()
+    dataset = VersionedDataset(os.path.join(
+        TEST_DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION))
+    gan = get_baseline_gan(dataset)
+    train_kwargs = {'epochs': 3, 'batch_size': 8}
+    train_config = gan.train(dataset, use_wandb=False, **train_kwargs)
+    assert isinstance(train_config.history, History)
+    for name, value in train_kwargs.items():
+        assert train_config.train_args[name] == value
 
 
+@pytest.mark.slowtest
 def test_train_creates_model_checkpoints() -> None:
     """Tests that train creates model checkpoints when specified."""
-    # TODO probably slow
-    assert False
+    for filename in TEST_CKPT_GENERATOR, TEST_CKPT_DISCRIMINATOR:
+        try:
+            os.remove(filename)
+        except FileNotFoundError:
+            pass
+    _create_dataset()
+    dataset = VersionedDataset(os.path.join(
+        TEST_DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION))
+    gan = get_baseline_gan(dataset)
+    _ = gan.train(dataset,
+                  epochs=1,
+                  use_wandb=False,
+                  model_checkpoint_prefix=TEST_CKPT_PREFIX)
+    assert os.path.exists(TEST_CKPT_GENERATOR)
+    assert os.path.exists(TEST_CKPT_DISCRIMINATOR)
 
 
 @pytest.mark.wandbtest
@@ -297,11 +330,30 @@ def test_train_syncs_with_wandb() -> None:
 def test_generate_returns_valid_images() -> None:
     """Tests that generate returns valid images (correct shape, all values in
     [0, 1])."""
-    # TODO
-    assert False
+    generator = _get_test_generator()
+    discriminator = _get_test_discriminator()
+    generator.compile()
+    discriminator.compile()
+    gan = GAN(generator, discriminator)
+    num_samples = 4
+    images = gan.generate(num_samples)
+    assert images.shape == (num_samples, TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS)
+    assert images.min() >= 0
+    assert images.max() <= 1
 
 
 def test_concatenate_images_correct_shape() -> None:
     """Tests that concatenate_images returns a tensor of the expected shape."""
-    # TODO
-    assert False
+    generator = _get_test_generator()
+    discriminator = _get_test_discriminator()
+    generator.compile()
+    discriminator.compile()
+    gan = GAN(generator, discriminator)
+    rows = 2
+    cols = 4
+    num_samples = rows * cols
+    images = gan.generate(num_samples)
+    concatenated = GAN.concatenate_images(images, rows, cols)
+    assert concatenated.shape == (TEST_HEIGHT * rows,
+                                  TEST_WIDTH * cols,
+                                  TEST_CHANNELS)
