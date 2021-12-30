@@ -71,9 +71,9 @@ class GAN:
         self.generator = generator
         self.discriminator = discriminator
 
-    def save_model(self,
-                   generator_filename: str,
-                   discriminator_filename: str) -> None:
+    def save(self,
+             generator_filename: str,
+             discriminator_filename: str) -> None:
         """Saves the generator and discriminator networks to the given paths.
 
         :param generator_filename: The path to which to save the generator.
@@ -233,8 +233,8 @@ class GAN:
             print(f'Epoch {epoch}/{epochs} ({end_time - start_time:.1f}s): '
                   f'loss={loss:.3f}, gen_loss={gen_loss:.3f}')
             if model_checkpoint_prefix:
-                self.save_model(generator_checkpoint_filename,
-                                discriminator_checkpoint_filename)
+                self.save(generator_checkpoint_filename,
+                          discriminator_checkpoint_filename)
                 print(f'Generator loss={gen_loss:.3f}; saving model.')
             if use_wandb:
                 logged_items = {
@@ -255,8 +255,8 @@ class GAN:
                 wandb.log(logged_items)
                 tmp_generator_filename = '/tmp/gan_generator.h5'
                 tmp_discriminator_filename = '/tmp/gan_discriminator.h5'
-                self.save_model(tmp_generator_filename,
-                                tmp_discriminator_filename)
+                self.save(tmp_generator_filename,
+                          tmp_discriminator_filename)
                 # pylint: disable=unexpected-keyword-arg
                 wandb.save(tmp_generator_filename, base_path='/tmp')
                 wandb.save(tmp_discriminator_filename, base_path='/tmp')
