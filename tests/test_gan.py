@@ -1,6 +1,8 @@
 """Tests gan.py."""
+# pylint: disable=no-name-in-module, protected-access
 
 import os
+from time import sleep
 import pytest
 import numpy as np
 from tensorflow.keras.models import Model, Sequential
@@ -9,9 +11,11 @@ from tensorflow.keras.callbacks import History
 from mlops.dataset.versioned_dataset import VersionedDataset
 from imagegen.publish_dataset import DATASET_VERSION
 from imagegen.train_model import get_baseline_gan
-from imagegen.gan import GAN, GANShapeError, GANHasNoOptimizerError
+from imagegen.gan import GAN, GANShapeError, GANHasNoOptimizerError, \
+    WANDB_PROJECT_TITLE
 from tests.test_train_model import TEST_DATASET_PUBLICATION_PATH_LOCAL, \
     _create_dataset
+from tests.wandb_api import is_wandb_connected, get_last_wandb_project_run
 
 # For the purposes of several tests, we have the following models.
 # Generator: Takes length 4 noise vectors as input and outputs 1 x 2 x 3 images.
@@ -26,8 +30,7 @@ TEST_DISCRIMINATOR_FILENAME = '/tmp/test_gan/discriminator.h5'
 TEST_CKPT_PREFIX = '/tmp/test_gan/ckpt'
 TEST_CKPT_GENERATOR = f'{TEST_CKPT_PREFIX}_generator.h5'
 TEST_CKPT_DISCRIMINATOR = f'{TEST_CKPT_PREFIX}_discriminator.h5'
-
-# TODO mark slowtests
+WANDB_SYNC_TIME_SECONDS = 10
 
 
 def _get_test_generator() -> Model:
@@ -256,6 +259,7 @@ def test_discriminator_loss() -> None:
 def test_train_step_updates_weights() -> None:
     """Tests that _train_step updates the generator and discriminator
     weights."""
+    # pylint: disable=no-member
     _create_dataset()
     dataset = VersionedDataset(os.path.join(
         TEST_DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION))
@@ -274,6 +278,7 @@ def test_train_step_updates_weights() -> None:
 def test_train_step_returns_losses() -> None:
     """Tests that _train_step returns a tuple of generator and discriminator
     losses."""
+    # pylint: disable=no-member
     _create_dataset()
     dataset = VersionedDataset(os.path.join(
         TEST_DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION))
@@ -323,8 +328,16 @@ def test_train_creates_model_checkpoints() -> None:
 @pytest.mark.slowtest
 def test_train_syncs_with_wandb() -> None:
     """Tests that train syncs with wandb when specified."""
-    # TODO sleep for a few seconds to ensure that the run is created
-    assert False
+    assert is_wandb_connected()
+    _create_dataset()
+    dataset = VersionedDataset(os.path.join(
+        TEST_DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION))
+    gan = get_baseline_gan(dataset)
+    train_config = gan.train(dataset, epochs=3, use_wandb=True)
+    sleep(WANDB_SYNC_TIME_SECONDS)
+    last_run = get_last_wandb_project_run(WANDB_PROJECT_TITLE)
+    wandb_history = last_run.history(pandas=False)
+    assert train_config.history.history['loss'][0] == wandb_history[0]['loss']
 
 
 def test_generate_returns_valid_images() -> None:
