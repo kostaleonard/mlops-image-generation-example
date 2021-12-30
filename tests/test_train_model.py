@@ -43,15 +43,16 @@ def test_publish_gan_creates_files() -> None:
         TEST_DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION))
     gan = train_model.get_baseline_gan(dataset)
     training_config = gan.train(dataset, epochs=1, use_wandb=False)
-    train_model.publish_gan(
+    base_path = train_model.publish_gan(
         gan,
         dataset,
         training_config,
         TEST_MODEL_PUBLICATION_PATH_LOCAL)
     assert os.path.exists(TEST_MODEL_PUBLICATION_PATH_LOCAL)
     assert len(os.listdir(TEST_MODEL_PUBLICATION_PATH_LOCAL)) == 1
-    base_path = os.path.join(TEST_MODEL_PUBLICATION_PATH_LOCAL,
-                             os.listdir(TEST_MODEL_PUBLICATION_PATH_LOCAL)[0])
+    assert os.path.join(
+        TEST_MODEL_PUBLICATION_PATH_LOCAL,
+        os.listdir(TEST_MODEL_PUBLICATION_PATH_LOCAL)[0]) == base_path
     assert set(os.listdir(base_path)) == {'generator', 'discriminator'}
     generator_base_path = os.path.join(base_path, 'generator')
     discriminator_base_path = os.path.join(base_path, 'discriminator')
