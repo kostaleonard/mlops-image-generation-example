@@ -12,7 +12,7 @@ the dataset was taken from [Kaggle](https://www.kaggle.com/vishalsubbiah/pokemon
 ## Sample output
 
 The goal of this project is to demonstrate ML Ops techniques such as dataset and model versioning on an image generation
-task. The main artifacts are the versioned datasets, versioned models, and the output of the generative model. Please
+task. The main artifacts are versioned datasets, versioned models, and the output of the generative model. Please
 refer to [the mloperations package](https://github.com/kostaleonard/mlops) for a more complete discussion of the need
 for ML Ops techniques in machine learning workflows.
 
@@ -55,8 +55,8 @@ datasets/
 
 ### Versioned models
 
-Versioned models consist of not only the saved model files, but also metadata including a link to the dataset on which
-the model was trained.
+Versioned models consist of not only the saved model files, but also metadata including the hyperparameters, training
+history, and a link to the dataset on which the model was trained.
 
 #### Versioned model publication
 
@@ -104,7 +104,7 @@ from mlops.model.versioned_model import VersionedModel
 versioned_generator = VersionedModel(versioned_generator_path)
 versioned_discriminator = VersionedModel(versioned_discriminator_path)
 gan = GAN(versioned_generator.model, versioned_discriminator.model)
-images = gan.generate(4 * 4)
+images = gan.generate(16)
 ```
 
 #### 5 epochs
