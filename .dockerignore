@@ -1,0 +1,10 @@
+*
+!data
+!imagegen
+!notebooks
+!tests
+!.gitignore
+!.pylintrc
+!Makefile
+!pytest.ini
+!requirements.txt

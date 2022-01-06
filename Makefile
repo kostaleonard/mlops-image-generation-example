@@ -41,3 +41,9 @@ docker_run:
 
 docker_rm:
 	docker rm mlops-image-gen
+
+docker_push:
+	docker push kostaleonard/mlops-image-gen
+
+docker_pull:
+	docker pull kostaleonard/mlops-image-gen
