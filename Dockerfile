@@ -1,9 +1,9 @@
-FROM arm64v8/python:3.9
+FROM nvcr.io/nvidia/l4t-tensorflow:r32.6.1-tf2.5-py3
 WORKDIR mlops-image-generation-example
 COPY . .
 EXPOSE 8888
 ENV JUPYTER_ENABLE_LAB=yes
 RUN apt-get update && \
-    pip install --upgrade pip && \
-    make install
+    pip3 install --upgrade pip && \
+    pip3 install -r requirements.txt
 ENTRYPOINT ["/bin/bash"]
