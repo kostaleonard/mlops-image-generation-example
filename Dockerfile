@@ -4,5 +4,6 @@ COPY . .
 EXPOSE 8888
 ENV JUPYTER_ENABLE_LAB=yes
 RUN apt-get update && \
+    pip install --upgrade pip && \
     make install
 ENTRYPOINT ["/bin/bash"]
