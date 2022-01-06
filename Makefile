@@ -29,3 +29,15 @@ pytest_wandb:
 pytest_full:
 	pytest --cov=imagegen tests
 	coverage xml
+
+docker_jupyter:
+	jupyter notebook --ip 0.0.0.0 --port 8888 --allow-root
+
+docker_build:
+	docker build . -t kostaleonard/mlops-image-gen
+
+docker_run:
+	docker run --name mlops-image-gen -it -p 8888:8888 kostaleonard/mlops-image-gen
+
+docker_rm:
+	docker rm mlops-image-gen
