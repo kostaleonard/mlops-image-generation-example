@@ -6,7 +6,7 @@ This model syncs with WandB.
 """
 # pylint: disable=no-name-in-module
 
-from typing import Optional
+from typing import Optional, Tuple
 import time
 from tqdm import tqdm
 import numpy as np
@@ -135,7 +135,7 @@ class GAN:
         return real_loss + fake_loss
 
     @tf.function
-    def _train_step(self, X_batch: np.ndarray) -> tuple[float, float]:
+    def _train_step(self, X_batch: np.ndarray) -> Tuple[float, float]:
         """Runs one batch of images through the model, computes the loss, and
         applies the gradients to the model; returns the generator and
         discriminator losses on the batch.

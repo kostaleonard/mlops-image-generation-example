@@ -1,4 +1,4 @@
-mloperations>=0.1.0
+mloperations>=0.1.1
 pylint
 pytest
 pytest-cov
@@ -7,4 +7,4 @@ numpy
 matplotlib
 tqdm
 wandb
-tensorflow
+tensorflow==2.4.1

@@ -1,6 +1,7 @@
 """Contains the PokemonGenerationDataProcessor class."""
 
 import os
+from typing import Dict
 import numpy as np
 from matplotlib.image import imread
 from mlops.dataset.invertible_data_processor import InvertibleDataProcessor
@@ -20,7 +21,7 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
     generation."""
 
     def get_raw_features_and_labels(self, dataset_path: str) -> \
-            (dict[str, np.ndarray], dict[str, np.ndarray]):
+            (Dict[str, np.ndarray], Dict[str, np.ndarray]):
         """Returns the raw feature and label tensors from the dataset path. This
         method is specifically used for the train/val/test sets and not input
         data for prediction, because in some cases the features and labels need
@@ -40,7 +41,7 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
         """
         return self.get_raw_features(dataset_path), {}
 
-    def get_raw_features(self, dataset_path: str) -> dict[str, np.ndarray]:
+    def get_raw_features(self, dataset_path: str) -> Dict[str, np.ndarray]:
         """Returns the raw feature tensors from the prediction dataset path. Raw
         features are tensors of shape m x h x w x c, where m is the number of
         images, h is the image height, w is the image width, and c is the number

@@ -2,7 +2,7 @@
 # pylint: disable=no-name-in-module
 
 import os
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, Reshape, \
@@ -113,7 +113,7 @@ def publish_gan(gan: GAN,
                 dataset: VersionedDataset,
                 training_config: TrainingConfig,
                 publication_path: str,
-                tags: Optional[list[str]] = None) -> str:
+                tags: Optional[List[str]] = None) -> str:
     """Publishes the GAN to the path on the local or remote filesystem.
 
     :param gan: The GAN to be published, with the exact weights desired for
