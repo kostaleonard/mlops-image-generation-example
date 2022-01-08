@@ -168,7 +168,7 @@ class GAN:
               epochs: int = DEFAULT_EPOCHS,
               batch_size: int = DEFAULT_BATCH_SIZE,
               model_checkpoint_prefix: Optional[str] = DEFAULT_CKPT_PREFIX,
-              use_wandb: bool = True) -> TrainingConfig:
+              use_wandb: bool = False) -> TrainingConfig:
         """Trains the model on the training data.
 
         :param dataset: The dataset on which to train the model.

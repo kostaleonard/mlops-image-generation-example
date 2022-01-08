@@ -37,7 +37,7 @@ docker_build:
 	docker build . -t kostaleonard/mlops-image-gen
 
 docker_run:
-	docker run --name mlops-image-gen -it -p 8888:8888 kostaleonard/mlops-image-gen
+	docker run --gpus all --name mlops-image-gen -it -p 8888:8888 kostaleonard/mlops-image-gen
 
 docker_rm:
 	docker rm mlops-image-gen
