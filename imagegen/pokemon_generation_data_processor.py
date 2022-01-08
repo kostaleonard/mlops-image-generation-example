@@ -80,7 +80,7 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
         image_filenames = [
             filename for filename in
             os.listdir(os.path.join(dataset_path, IMAGES_DIRNAME))
-            if filename.endswith('.jpg') or filename.endswith('.png')]
+            if filename.endswith('.png')]
         for filename in image_filenames:
             full_path = os.path.join(dataset_path, IMAGES_DIRNAME, filename)
             # Discard alpha channel.
@@ -155,6 +155,7 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
         :param image: The image tensor to be transformed.
         :return: An augmented image based on various affine transformations.
         """
+        # TODO add tests
         # Random rotation.
         augmented = random_rotation(image,
                                     self.rotation_range_degrees,
