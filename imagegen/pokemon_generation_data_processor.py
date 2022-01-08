@@ -4,6 +4,7 @@ import os
 from typing import Dict
 import numpy as np
 from matplotlib.image import imread
+from tensorflow.keras.preprocessing.image import random_rotation
 from mlops.dataset.invertible_data_processor import InvertibleDataProcessor
 from imagegen.errors import AttemptToUseLabelsError
 
@@ -14,11 +15,29 @@ VAL_SPLIT = 0.05
 HEIGHT = 120
 WIDTH = 120
 CHANNELS = 3
+AUGMENTATIONS_PER_IMAGE = 5
+ROTATION_RANGE = 20
+HORIZONTAL_FLIP_CHANCE = 0.5
+CHANNEL_AXIS = 2
 
 
 class PokemonGenerationDataProcessor(InvertibleDataProcessor):
     """Transforms the pokemon dataset at data/pokemon into features for image
     generation."""
+
+    def __init__(
+            self,
+            augmentations_per_image: int = AUGMENTATIONS_PER_IMAGE,
+            rotation_range_degrees: int = ROTATION_RANGE) -> None:
+        """Instantiates the object.
+
+        :param augmentations_per_image: The number of augmentations applied to
+            each image. Set to 0 for no augmentation.
+        :param rotation_range_degrees: The rotation range applied in image
+            augmentation, in degrees.
+        """
+        self.augmentations_per_image = augmentations_per_image
+        self.rotation_range_degrees = rotation_range_degrees
 
     def get_raw_features_and_labels(self, dataset_path: str) -> \
             (Dict[str, np.ndarray], Dict[str, np.ndarray]):
@@ -69,7 +88,11 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
             if filename.endswith('.jpg'):
                 tensor = tensor.astype(np.float32) / 255
             X.append(tensor)
+            for _ in range(self.augmentations_per_image):
+                augmentation = self._get_augmented_image(tensor)
+                X.append(augmentation)
         X = np.array(X)
+        np.random.shuffle(X)
         features = {}
         num_train = int(len(X) * TRAIN_SPLIT)
         num_val = int(len(X) * VAL_SPLIT)
@@ -125,3 +148,18 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
         :return: The raw label tensor.
         """
         raise AttemptToUseLabelsError
+
+    def _get_augmented_image(self, image: np.ndarray) -> np.ndarray:
+        """Returns an augmented image based on various affine transformations.
+
+        :param image: The image tensor to be transformed.
+        :return: An augmented image based on various affine transformations.
+        """
+        # Random rotation.
+        augmented = random_rotation(image,
+                                    self.rotation_range_degrees,
+                                    channel_axis=CHANNEL_AXIS)
+        # Horizontal flip.
+        if np.random.random() < HORIZONTAL_FLIP_CHANCE:
+            augmented = np.fliplr(augmented)
+        return augmented

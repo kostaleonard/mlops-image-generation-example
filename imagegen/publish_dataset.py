@@ -5,7 +5,7 @@ from mlops.dataset.versioned_dataset_builder import VersionedDatasetBuilder
 from imagegen.pokemon_generation_data_processor import \
     PokemonGenerationDataProcessor, DEFAULT_DATASET_PATH
 
-DATASET_VERSION = 'v1'
+DATASET_VERSION = 'v2'
 DATASET_PUBLICATION_PATH_LOCAL = 'datasets'
 DATASET_PUBLICATION_PATH_S3 = \
     's3://kosta-mlops/mlops-image-generation-example/datasets'
