@@ -20,7 +20,7 @@ import wandb
 from imagegen.errors import GANShapeError, GANHasNoOptimizerError
 
 DEFAULT_EPOCHS = 5
-DEFAULT_BATCH_SIZE = 32
+DEFAULT_BATCH_SIZE = 16
 DEFAULT_CKPT_PREFIX = 'models/checkpoints/gan'
 CROSS_ENTROPY_LOSS = BinaryCrossentropy(from_logits=False)
 WANDB_PROJECT_TITLE = 'gan_pokemon'
