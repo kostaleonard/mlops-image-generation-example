@@ -153,9 +153,9 @@ def main() -> None:
     gan = get_baseline_gan(dataset)
     training_config = gan.train(
         dataset,
-        use_wandb=True,
+        use_wandb=False,
         batch_size=32,
-        epochs=10000
+        epochs=5
     )
     publish_gan(
         gan,
