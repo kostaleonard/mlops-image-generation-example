@@ -47,3 +47,6 @@ docker_push:
 
 docker_pull:
 	docker pull kostaleonard/mlops-image-gen
+
+run_train:
+	PYTHONPATH=. nohup python3 imagegen/train_model.py & | tee train_log.txt
