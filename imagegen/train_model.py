@@ -6,7 +6,7 @@ from typing import Optional
 from datetime import datetime
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, Reshape, \
-    Conv2DTranspose
+    Conv2DTranspose, BatchNormalization, LeakyReLU
 from mlops.errors import PublicationPathAlreadyExistsError
 from mlops.dataset.versioned_dataset import VersionedDataset
 from mlops.model.versioned_model_builder import VersionedModelBuilder
@@ -36,22 +36,25 @@ def _get_baseline_gan_generator() -> Model:
     # Shape: (None, 15, 15, 16)
     generator.add(Conv2DTranspose(16,
                                   kernel_size=3,
-                                  activation='relu',
                                   strides=2,
                                   padding='same'))
     # Shape: (None, 30, 30, 16).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
     generator.add(Conv2DTranspose(8,
                                   kernel_size=3,
-                                  activation='relu',
                                   strides=2,
                                   padding='same'))
     # Shape: (None, 60, 60, 8).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
     generator.add(Conv2DTranspose(4,
                                   kernel_size=3,
-                                  activation='relu',
                                   strides=2,
                                   padding='same'))
     # Shape: (None, 120, 120, 4).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
     generator.add(Conv2DTranspose(3,
                                   kernel_size=3,
                                   activation='sigmoid',
@@ -148,7 +151,12 @@ def main() -> None:
                                     DATASET_VERSION)
     dataset = VersionedDataset(dataset_path)
     gan = get_baseline_gan(dataset)
-    training_config = gan.train(dataset)
+    training_config = gan.train(
+        dataset,
+        use_wandb=True,
+        batch_size=32,
+        epochs=10000
+    )
     publish_gan(
         gan,
         dataset,

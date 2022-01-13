@@ -146,7 +146,7 @@ class GAN:
         :return: A 2-tuple of the generator and discriminator losses on the
             batch.
         """
-        noise = tf.random.normal((len(X_batch), self.gen_input_dim))
+        noise = tf.random.normal((X_batch.shape[0], self.gen_input_dim))
         with tf.GradientTape() as gen_tape, tf.GradientTape() as dis_tape:
             generated_images = self.generator(noise, training=True)
             real_output = self.discriminator(X_batch, training=True)
@@ -168,7 +168,7 @@ class GAN:
               epochs: int = DEFAULT_EPOCHS,
               batch_size: int = DEFAULT_BATCH_SIZE,
               model_checkpoint_prefix: Optional[str] = DEFAULT_CKPT_PREFIX,
-              use_wandb: bool = True) -> TrainingConfig:
+              use_wandb: bool = False) -> TrainingConfig:
         """Trains the model on the training data.
 
         :param dataset: The dataset on which to train the model.
