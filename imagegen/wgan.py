@@ -20,6 +20,7 @@ easy).
 5. Use the RMSProp version of gradient descent with small learning rate
 (e.g., 0.00005) and no momentum. Momentum interferes with training stability.
 """
+# pylint: disable=no-name-in-module
 
 import numpy as np
 import tensorflow as tf
@@ -55,8 +56,7 @@ class WGAN(GAN):
             range [0, 1].
         """
         super().__init__(generator, discriminator)
-        # TODO test errors
-        if discriminator.layers[-1].activation != linear:
+        if discriminator.layers[-1].activation is not linear:
             raise WGANDiscriminatorActivationNotLinearError
         if not isinstance(generator.optimizer, RMSprop) or \
                 not isinstance(discriminator.optimizer, RMSprop):
