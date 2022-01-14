@@ -32,6 +32,7 @@ from imagegen.errors import WGANDiscriminatorActivationNotLinearError, \
 
 NUM_DISCRIMINATOR_UPDATES_PER_BATCH = 5
 DISCRIMINATOR_WEIGHT_CLIP = 0.01
+DEFAULT_RMSPROP_LR = 5e-5
 
 
 class WGAN(GAN):
@@ -88,7 +89,7 @@ class WGAN(GAN):
             generator loss is minimized when the discriminator scores fake
             images high.
         """
-        return -fake_output.mean()
+        return -tf.reduce_mean(fake_output)
 
     @staticmethod
     def _discriminator_loss(real_output: np.ndarray,
@@ -111,7 +112,7 @@ class WGAN(GAN):
             images high.
         """
         # TODO every implementation of this that I can find does the means separately. Can I do this: return (fake_output - real_output).mean()
-        return fake_output.mean() - real_output.mean()
+        return tf.reduce_mean(fake_output) - tf.reduce_mean(real_output)
 
     @tf.function
     def _train_step(self, X_batch: np.ndarray) -> tuple[float, float]:
