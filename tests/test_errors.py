@@ -1,7 +1,8 @@
 """Tests errors.py."""
 
 from imagegen.errors import AttemptToUseLabelsError, GANShapeError, \
-    GANHasNoOptimizerError
+    GANHasNoOptimizerError, WGANDiscriminatorActivationNotLinearError, \
+    WGANOptimizersNotRMSPropError
 
 
 def test_attempt_to_use_labels_error_extends_value_error() -> None:
@@ -19,4 +20,17 @@ def test_gan_shape_error_extends_value_error() -> None:
 def test_gan_has_no_optimizer_error_extends_value_error() -> None:
     """Tests that GANHasNoOptimizerError extends ValueError."""
     err = GANHasNoOptimizerError()
+    assert isinstance(err, ValueError)
+
+
+def test_wgan_discriminator_activation_error_extends_value_error() -> None:
+    """Tests that WGANDiscriminatorActivationNotLinearError extends
+    ValueError."""
+    err = WGANDiscriminatorActivationNotLinearError()
+    assert isinstance(err, ValueError)
+
+
+def test_wgan_optimizer_error_extends_value_error() -> None:
+    """Tests that WGANOptimizersNotRMSPropError extends ValueError."""
+    err = WGANOptimizersNotRMSPropError()
     assert isinstance(err, ValueError)
