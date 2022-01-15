@@ -111,8 +111,7 @@ class WGAN(GAN):
             loss is minimized when it correctly scores fake images low and real
             images high.
         """
-        # TODO every implementation of this that I can find does the means separately. Can I do this: return (fake_output - real_output).mean()
-        return tf.reduce_mean(fake_output) - tf.reduce_mean(real_output)
+        return tf.reduce_mean(fake_output - real_output)
 
     @tf.function
     def _train_step(self, X_batch: np.ndarray) -> tuple[float, float]:

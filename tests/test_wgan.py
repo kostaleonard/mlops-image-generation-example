@@ -3,6 +3,7 @@
 
 import os
 import pytest
+import numpy as np
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Input, Flatten
 from imagegen.wgan import WGAN
@@ -74,14 +75,42 @@ def test_load_returns_wgan() -> None:
 
 def test_generator_loss() -> None:
     """Tests _generator_loss."""
-    # TODO
-    assert False
+    factor = 2
+    good_pred = np.ones((10, 1))
+    better_pred = factor * good_pred
+    worse_pred = -factor * good_pred
+    good_loss = WGAN._generator_loss(good_pred)
+    better_loss = WGAN._generator_loss(better_pred)
+    worse_loss = WGAN._generator_loss(worse_pred)
+    assert better_loss < good_loss < worse_loss
+    # Concrete scores.
+    assert np.isclose(good_loss, -1)
+    assert np.isclose(better_loss, -factor)
+    assert np.isclose(worse_loss, factor)
 
 
 def test_discriminator_loss() -> None:
     """Tests _discriminator_loss."""
-    # TODO
-    assert False
+    good_real = np.ones((10, 1))
+    good_fake = -np.ones_like(good_real)
+    okay_real = 0.5 * np.ones_like(good_real)
+    okay_fake = -0.5 * np.ones_like(good_real)
+    bad_real = good_fake
+    bad_fake = good_real
+    # Higher scores gets lower loss.
+    assert WGAN._discriminator_loss(good_real, good_fake) < \
+           WGAN._discriminator_loss(okay_real, good_fake)
+    assert WGAN._discriminator_loss(good_real, good_fake) < \
+           WGAN._discriminator_loss(good_real, okay_fake)
+    # Completely incorrect predictions are the worst.
+    assert WGAN._discriminator_loss(good_real, good_fake) < \
+           WGAN._discriminator_loss(okay_real, okay_fake) < \
+           WGAN._discriminator_loss(bad_real, bad_fake)
+    # Concrete scores.
+    assert np.isclose(WGAN._discriminator_loss(good_real, good_fake), -2)
+    assert np.isclose(WGAN._discriminator_loss(good_real, okay_fake), -1.5)
+    assert np.isclose(WGAN._discriminator_loss(okay_real, okay_fake), -1)
+    assert np.isclose(WGAN._discriminator_loss(bad_real, bad_fake), 2)
 
 
 @pytest.mark.slowtest
