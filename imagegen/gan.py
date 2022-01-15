@@ -212,8 +212,8 @@ class GAN:
             wandb.run.summary['discriminator_graph'] = wandb.Graph.from_keras(
                 self.discriminator)
         image_generator = ImageDataGenerator(
-            featurewise_center=True,
-            featurewise_std_normalization=True,
+            featurewise_center=False,
+            featurewise_std_normalization=False,
             rotation_range=ROTATION_RANGE_DEGREES,
             width_shift_range=WIDTH_SHIFT_RANGE,
             height_shift_range=HEIGHT_SHIFT_RANGE,
