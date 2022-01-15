@@ -1,16 +1,20 @@
 """Tests wgan.py."""
-# pylint: disable=no-name-in-module
+# pylint: disable=no-name-in-module, protected-access
 
 import os
 import pytest
 import numpy as np
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Input, Flatten
-from imagegen.wgan import WGAN
+from mlops.dataset.versioned_dataset import VersionedDataset
+from imagegen.publish_dataset import DATASET_VERSION
+from imagegen.train_model import get_baseline_wgan
+from imagegen.wgan import WGAN, DISCRIMINATOR_WEIGHT_CLIP
 from imagegen.errors import WGANOptimizersNotRMSPropError, \
     WGANDiscriminatorActivationNotLinearError
 from tests.test_gan import TEST_HEIGHT, TEST_WIDTH, TEST_CHANNELS, \
-    _get_test_generator, TEST_GENERATOR_FILENAME, TEST_DISCRIMINATOR_FILENAME
+    _get_test_generator, TEST_GENERATOR_FILENAME, TEST_DISCRIMINATOR_FILENAME, \
+    _create_dataset, TEST_DATASET_PUBLICATION_PATH_LOCAL
 
 
 def _get_test_wgan_discriminator() -> Model:
@@ -117,13 +121,33 @@ def test_discriminator_loss() -> None:
 def test_train_step_updates_weights() -> None:
     """Tests that _train_step updates the generator and discriminator
     weights."""
-    # TODO
-    assert False
+    # pylint: disable=no-member
+    _create_dataset()
+    dataset = VersionedDataset(os.path.join(
+        TEST_DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION))
+    wgan = get_baseline_wgan(dataset)
+    img_batch = dataset.X_train[:2]
+    gen_weights_before = wgan.generator.trainable_variables[0].numpy()
+    dis_weights_before = wgan.discriminator.trainable_variables[0].numpy()
+    _ = wgan._train_step(img_batch)
+    gen_weights_after = wgan.generator.trainable_variables[0].numpy()
+    dis_weights_after = wgan.discriminator.trainable_variables[0].numpy()
+    assert not (gen_weights_after == gen_weights_before).all()
+    assert not (dis_weights_after == dis_weights_before).all()
 
 
 @pytest.mark.slowtest
 def test_train_step_clips_discriminator_weights() -> None:
     """Tests that, after a training step has finished, a WGAN's discriminator's
     weights have been clipped."""
-    # TODO
-    assert False
+    # pylint: disable=no-member
+    _create_dataset()
+    dataset = VersionedDataset(os.path.join(
+        TEST_DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION))
+    wgan = get_baseline_wgan(dataset)
+    img_batch = dataset.X_train[:2]
+    _ = wgan._train_step(img_batch)
+    for weights in wgan.discriminator.trainable_variables:
+        dis_weights_after = weights.numpy()
+        assert dis_weights_after.min() >= -DISCRIMINATOR_WEIGHT_CLIP
+        assert dis_weights_after.max() <= DISCRIMINATOR_WEIGHT_CLIP
