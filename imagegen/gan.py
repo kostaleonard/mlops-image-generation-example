@@ -11,6 +11,7 @@ import time
 from tqdm import tqdm
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Model, load_model as tf_load_model
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.callbacks import History
@@ -21,12 +22,17 @@ from imagegen.errors import GANShapeError, GANHasNoOptimizerError
 
 DEFAULT_EPOCHS = 5
 DEFAULT_BATCH_SIZE = 32
+DEFAULT_BATCHES_PER_EPOCH = 100
 DEFAULT_CKPT_PREFIX = 'models/checkpoints/gan'
 CROSS_ENTROPY_LOSS = BinaryCrossentropy(from_logits=False)
 WANDB_PROJECT_TITLE = 'gan_pokemon'
 MAX_NUM_WANDB_IMAGES = 50
 WANDB_IMAGE_ROWS = 4
 WANDB_IMAGE_COLS = 4
+ROTATION_RANGE_DEGREES = 15
+WIDTH_SHIFT_RANGE = 0.1
+HEIGHT_SHIFT_RANGE = 0.1
+ZOOM_RANGE = 0.2
 
 
 class GAN:
@@ -146,7 +152,7 @@ class GAN:
         :return: A 2-tuple of the generator and discriminator losses on the
             batch.
         """
-        noise = tf.random.normal((len(X_batch), self.gen_input_dim))
+        noise = tf.random.normal((X_batch.shape[0], self.gen_input_dim))
         with tf.GradientTape() as gen_tape, tf.GradientTape() as dis_tape:
             generated_images = self.generator(noise, training=True)
             real_output = self.discriminator(X_batch, training=True)
@@ -167,8 +173,9 @@ class GAN:
               dataset: VersionedDataset,
               epochs: int = DEFAULT_EPOCHS,
               batch_size: int = DEFAULT_BATCH_SIZE,
+              batches_per_epoch: int = DEFAULT_BATCHES_PER_EPOCH,
               model_checkpoint_prefix: Optional[str] = DEFAULT_CKPT_PREFIX,
-              use_wandb: bool = True) -> TrainingConfig:
+              use_wandb: bool = False) -> TrainingConfig:
         """Trains the model on the training data.
 
         :param dataset: The dataset on which to train the model.
@@ -176,6 +183,7 @@ class GAN:
             training.
         :param batch_size: The size of the batches used in mini-batch gradient
             descent.
+        :param batches_per_epoch: The number of batches to use per epoch.
         :param model_checkpoint_prefix: If specified, the prefix of the path to
             which to save the generator and discriminator. The generator
             file will have the suffix '_generator.h5' and the discriminator
@@ -203,10 +211,23 @@ class GAN:
                 self.generator)
             wandb.run.summary['discriminator_graph'] = wandb.Graph.from_keras(
                 self.discriminator)
-        train_dataset = tf.data.Dataset \
-            .from_tensor_slices(dataset.X_train) \
-            .shuffle(len(dataset.X_train)) \
-            .batch(batch_size)
+        image_generator = ImageDataGenerator(
+            featurewise_center=True,
+            featurewise_std_normalization=True,
+            rotation_range=ROTATION_RANGE_DEGREES,
+            width_shift_range=WIDTH_SHIFT_RANGE,
+            height_shift_range=HEIGHT_SHIFT_RANGE,
+            zoom_range=ZOOM_RANGE,
+            horizontal_flip=True
+        )
+        image_generator.fit(dataset.X_train)
+        train_dataset = tf.data.Dataset.from_generator(
+            lambda: image_generator.flow(dataset.X_train,
+                                         shuffle=True,
+                                         batch_size=batch_size),
+            output_signature=tf.TensorSpec(
+                shape=(None, *dataset.X_train[0].shape),
+                dtype=tf.float32)).as_numpy_iterator()
         generate_images_epochs = {
             int(num * (epochs - 1) / MAX_NUM_WANDB_IMAGES)
             for num in range(1, MAX_NUM_WANDB_IMAGES + 1)
@@ -221,7 +242,8 @@ class GAN:
             dis_loss = 0
             num_batches = 0
             start_time = time.time()
-            for train_batch in tqdm(train_dataset):
+            for _ in tqdm(range(batches_per_epoch)):
+                train_batch = next(train_dataset)
                 gen_loss_batch, dis_loss_batch = self._train_step(train_batch)
                 gen_loss += gen_loss_batch
                 dis_loss += dis_loss_batch
