@@ -6,7 +6,7 @@ from typing import Optional
 from datetime import datetime
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, Reshape, \
-    Conv2DTranspose, BatchNormalization, LeakyReLU
+    Conv2DTranspose, BatchNormalization, LeakyReLU, Cropping2D, Dropout
 from tensorflow.keras.optimizers import RMSprop
 from tensorflow.keras.activations import linear
 from mlops.errors import PublicationPathAlreadyExistsError
@@ -32,30 +32,47 @@ def _get_baseline_gan_generator() -> Model:
     """
     generator = Sequential()
     # Shape: (None, generator_input_dim).
-    generator.add(Dense(15 * 15 * 16,
+    generator.add(Dense(4 * 4 * 512,
+                        use_bias=False,
                         input_shape=(DEFAULT_GEN_INPUT_DIM,)))
-    # Shape: (None, 3600).
-    generator.add(Reshape(target_shape=(15, 15, 16)))
-    # Shape: (None, 15, 15, 16)
+    # Shape: (None, 8192).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
+    generator.add(Reshape(target_shape=(4, 4, 512)))
+    # Shape: (None, 4, 4, 512)
+    generator.add(Conv2DTranspose(256,
+                                  kernel_size=3,
+                                  strides=2,
+                                  padding='same'))
+    # Shape: (None, 8, 8, 256).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
+    generator.add(Conv2DTranspose(128,
+                                  kernel_size=3,
+                                  strides=2,
+                                  padding='same'))
+    # Shape: (None, 16, 16, 128).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
+    generator.add(Conv2DTranspose(64,
+                                  kernel_size=3,
+                                  strides=2,
+                                  padding='same'))
+    # Shape: (None, 32, 32, 64).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
+    generator.add(Conv2DTranspose(32,
+                                  kernel_size=3,
+                                  strides=2,
+                                  padding='same'))
+    # Shape: (None, 64, 64, 32).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
     generator.add(Conv2DTranspose(16,
                                   kernel_size=3,
                                   strides=2,
                                   padding='same'))
-    # Shape: (None, 30, 30, 16).
-    generator.add(BatchNormalization())
-    generator.add(LeakyReLU(alpha=0.1))
-    generator.add(Conv2DTranspose(8,
-                                  kernel_size=3,
-                                  strides=2,
-                                  padding='same'))
-    # Shape: (None, 60, 60, 8).
-    generator.add(BatchNormalization())
-    generator.add(LeakyReLU(alpha=0.1))
-    generator.add(Conv2DTranspose(4,
-                                  kernel_size=3,
-                                  strides=2,
-                                  padding='same'))
-    # Shape: (None, 120, 120, 4).
+    # Shape: (None, 128, 128, 16).
     generator.add(BatchNormalization())
     generator.add(LeakyReLU(alpha=0.1))
     generator.add(Conv2DTranspose(3,
@@ -63,6 +80,8 @@ def _get_baseline_gan_generator() -> Model:
                                   activation='sigmoid',
                                   strides=1,
                                   padding='same'))
+    # Shape: (None, 128, 128, 3).
+    generator.add(Cropping2D((4, 4)))
     # Shape: (None, 120, 120, 3).
     generator.compile()
     return generator
@@ -78,23 +97,26 @@ def _get_baseline_gan_discriminator(dataset: VersionedDataset) -> Model:
     discriminator = Sequential()
     # Shape: (None, 120, 120, 3).
     discriminator.add(
-        Conv2D(4, (3, 3), activation='relu', padding='same', strides=2,
+        Conv2D(128, (3, 3), activation='relu', padding='same', strides=2,
                input_shape=dataset.X_train.shape[1:]))
-    # Shape: (None, 60, 60, 4).
+    # Shape: (None, 60, 60, 128).
     discriminator.add(
-        Conv2D(8, (3, 3), activation='relu', padding='same', strides=2))
-    # Shape: (None, 30, 30, 8).
+        Conv2D(256, (3, 3), activation='relu', padding='same', strides=2))
+    # Shape: (None, 30, 30, 256).
     discriminator.add(
-        Conv2D(16, (3, 3), activation='relu', padding='same', strides=2))
-    # Shape: (None, 15, 15, 16).
+        Conv2D(512, (3, 3), activation='relu', padding='same', strides=2))
+    discriminator.add(Dropout(0.3))
+    # Shape: (None, 15, 15, 512).
     discriminator.add(
-        Conv2D(32, (3, 3), activation='relu', padding='same', strides=2))
-    # Shape: (None, 8, 8, 32).
+        Conv2D(512, (3, 3), activation='relu', padding='same', strides=2))
+    discriminator.add(Dropout(0.3))
+    # Shape: (None, 8, 8, 512).
     discriminator.add(
-        Conv2D(64, (3, 3), activation='relu', padding='same', strides=2))
-    # Shape: (None, 4, 4, 64).
+        Conv2D(1024, (3, 3), activation='relu', padding='same', strides=2))
+    # Shape: (None, 4, 4, 1024).
     discriminator.add(Flatten())
-    # Shape: (None, 1024).
+    # Shape: (None, 16384).
+    discriminator.add(Dropout(0.2))
     discriminator.add(Dense(1, activation='sigmoid'))
     # Shape: (None, 1).
     discriminator.compile()
