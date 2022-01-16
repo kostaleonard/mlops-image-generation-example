@@ -2,6 +2,7 @@
 # pylint: disable=no-name-in-module
 
 import os
+from argparse import ArgumentParser, Namespace
 from typing import Optional
 from datetime import datetime
 from tensorflow.keras.models import Model, Sequential
@@ -17,6 +18,7 @@ from imagegen.publish_dataset import publish_dataset, \
     DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION
 from imagegen.gan import GAN
 from imagegen.wgan import WGAN, DEFAULT_RMSPROP_LR
+from imagegen.errors import IncompatibleCommandLineArgumentsError
 
 MODEL_PUBLICATION_PATH_LOCAL = os.path.join('models', 'versioned')
 MODEL_PUBLICATION_PATH_S3 = \
@@ -186,15 +188,66 @@ def publish_gan(gan: GAN,
     return base_path
 
 
+def parse_args() -> Namespace:
+    """Returns the command line arguments.
+
+    :return: The command line arguments.
+    """
+    # TODO test
+    parser = ArgumentParser(description='Train and publish a model.')
+    parser.add_argument(
+        '--load_gan',
+        metavar='gan_path',
+        type=str,
+        help='(Optional) continue training the GAN (not WGAN) at the given '
+             'path. A new model will be published.'
+    )
+    parser.add_argument(
+        '--load_wgan',
+        metavar='wgan_path',
+        type=str,
+        help='(Optional) continue training the WGAN (not GAN) at the given '
+             'path. A new model will be published.'
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
     """Runs the program."""
+    args = parse_args()
+    if args.load_gan and args.load_wgan:
+        # TODO test
+        raise IncompatibleCommandLineArgumentsError(
+            'Cannot specify both --load_gan and --load_wgan.')
     try:
         dataset_path = publish_dataset(DATASET_PUBLICATION_PATH_LOCAL)
     except PublicationPathAlreadyExistsError:
         dataset_path = os.path.join(DATASET_PUBLICATION_PATH_LOCAL,
                                     DATASET_VERSION)
     dataset = VersionedDataset(dataset_path)
-    gan = get_baseline_wgan(dataset)
+    if not args.load_gan and not args.load_wgan:
+        print('Training new model.')
+        gan = get_baseline_wgan(dataset)
+    else:
+        base_path = args.load_gan if args.load_gan else args.load_wgan
+        generator_base_path = os.path.join(base_path, 'generator')
+        discriminator_base_path = os.path.join(base_path, 'discriminator')
+        generator_path = os.path.join(
+            generator_base_path,
+            os.listdir(generator_base_path)[0],
+            'model.h5'
+        )
+        discriminator_path = os.path.join(
+            discriminator_base_path,
+            os.listdir(discriminator_base_path)[0],
+            'model.h5'
+        )
+        if args.load_gan:
+            print(f'Continuing GAN training from {base_path}')
+            gan = GAN.load(generator_path, discriminator_path)
+        else:
+            print(f'Continuing WGAN training from {base_path}')
+            gan = WGAN.load(generator_path, discriminator_path)
     training_config = gan.train(
         dataset,
         use_wandb=False,

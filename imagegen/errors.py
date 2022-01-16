@@ -29,3 +29,9 @@ class WGANOptimizersNotRMSPropError(ValueError):
     """Raised when a WGAN is initialized with generator/discriminator models
     that do not use RMSProp as their optimizers. Optimizers with momentum, such
     as Adam, interfere with training stability and cannot be used."""
+
+
+# TODO test
+class IncompatibleCommandLineArgumentsError(ValueError):
+    """Raised when two or more incompatible command line arguments are
+    supplied."""
