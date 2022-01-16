@@ -31,7 +31,6 @@ class WGANOptimizersNotRMSPropError(ValueError):
     as Adam, interfere with training stability and cannot be used."""
 
 
-# TODO test
 class IncompatibleCommandLineArgumentsError(ValueError):
     """Raised when two or more incompatible command line arguments are
     supplied."""

@@ -193,7 +193,6 @@ def parse_args() -> Namespace:
 
     :return: The command line arguments.
     """
-    # TODO test
     parser = ArgumentParser(description='Train and publish a model.')
     parser.add_argument(
         '--load_gan',
@@ -209,16 +208,16 @@ def parse_args() -> Namespace:
         help='(Optional) continue training the WGAN (not GAN) at the given '
              'path. A new model will be published.'
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.load_gan and args.load_wgan:
+        raise IncompatibleCommandLineArgumentsError(
+            'Cannot specify both --load_gan and --load_wgan.')
+    return args
 
 
 def main() -> None:
     """Runs the program."""
     args = parse_args()
-    if args.load_gan and args.load_wgan:
-        # TODO test
-        raise IncompatibleCommandLineArgumentsError(
-            'Cannot specify both --load_gan and --load_wgan.')
     try:
         dataset_path = publish_dataset(DATASET_PUBLICATION_PATH_LOCAL)
     except PublicationPathAlreadyExistsError:

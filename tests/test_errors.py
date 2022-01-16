@@ -2,7 +2,7 @@
 
 from imagegen.errors import AttemptToUseLabelsError, GANShapeError, \
     GANHasNoOptimizerError, WGANDiscriminatorActivationNotLinearError, \
-    WGANOptimizersNotRMSPropError
+    WGANOptimizersNotRMSPropError, IncompatibleCommandLineArgumentsError
 
 
 def test_attempt_to_use_labels_error_extends_value_error() -> None:
@@ -33,4 +33,10 @@ def test_wgan_discriminator_activation_error_extends_value_error() -> None:
 def test_wgan_optimizer_error_extends_value_error() -> None:
     """Tests that WGANOptimizersNotRMSPropError extends ValueError."""
     err = WGANOptimizersNotRMSPropError()
+    assert isinstance(err, ValueError)
+
+
+def test_wgan_incompatible_arguments_error_extends_value_error() -> None:
+    """Tests that IncompatibleCommandLineArgumentsError extends ValueError."""
+    err = IncompatibleCommandLineArgumentsError()
     assert isinstance(err, ValueError)
