@@ -3,6 +3,7 @@
 import os
 import sys
 import shutil
+from argparse import Namespace
 import pytest
 from mlops.dataset.versioned_dataset import VersionedDataset
 from imagegen.publish_dataset import publish_dataset, DATASET_VERSION
@@ -69,14 +70,17 @@ def test_publish_gan_creates_files() -> None:
 
 
 @pytest.mark.slowtest
-def test_main_publishes_model() -> None:
-    """Tests that main publishes a VersionedModel."""
+def test_train_model_publishes_model() -> None:
+    """Tests that train_model publishes a VersionedModel."""
     try:
         num_models_before = len(os.listdir(
             train_model.MODEL_PUBLICATION_PATH_LOCAL))
     except FileNotFoundError:
         num_models_before = 0
-    train_model.main()
+    args = Namespace()
+    args.load_gan = None
+    args.load_wgan = None
+    train_model.train_model(args)
     num_models_after = len(os.listdir(train_model.MODEL_PUBLICATION_PATH_LOCAL))
     assert num_models_after == num_models_before + 1
 

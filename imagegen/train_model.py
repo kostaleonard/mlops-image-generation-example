@@ -215,9 +215,11 @@ def parse_args() -> Namespace:
     return args
 
 
-def main() -> None:
-    """Runs the program."""
-    args = parse_args()
+def train_model(args: Namespace) -> None:
+    """Trains and publishes a model based on the command line arguments.
+
+    :param args: The command line arguments.
+    """
     try:
         dataset_path = publish_dataset(DATASET_PUBLICATION_PATH_LOCAL)
     except PublicationPathAlreadyExistsError:
@@ -251,7 +253,7 @@ def main() -> None:
         dataset,
         use_wandb=False,
         batch_size=32,
-        epochs=5
+        epochs=1
     )
     publish_gan(
         gan,
@@ -259,6 +261,11 @@ def main() -> None:
         training_config,
         MODEL_PUBLICATION_PATH_LOCAL,
         tags=TAGS)
+
+
+def main() -> None:
+    """Runs the program."""
+    train_model(parse_args())
 
 
 if __name__ == '__main__':
