@@ -1,11 +1,14 @@
 """Tests train_model.py."""
 
 import os
+import sys
 import shutil
+from argparse import Namespace
 import pytest
 from mlops.dataset.versioned_dataset import VersionedDataset
 from imagegen.publish_dataset import publish_dataset, DATASET_VERSION
 from imagegen.gan import GAN
+from imagegen.errors import IncompatibleCommandLineArgumentsError
 from imagegen import train_model
 
 TEST_DATASET_PUBLICATION_PATH_LOCAL = '/tmp/test_train_model/datasets'
@@ -67,13 +70,57 @@ def test_publish_gan_creates_files() -> None:
 
 
 @pytest.mark.slowtest
-def test_main_publishes_model() -> None:
-    """Tests that main publishes a VersionedModel."""
+def test_train_model_publishes_model() -> None:
+    """Tests that train_model publishes a VersionedModel."""
     try:
         num_models_before = len(os.listdir(
             train_model.MODEL_PUBLICATION_PATH_LOCAL))
     except FileNotFoundError:
         num_models_before = 0
-    train_model.main()
+    args = Namespace()
+    args.load_gan = None
+    args.load_wgan = None
+    train_model.train_model(args)
     num_models_after = len(os.listdir(train_model.MODEL_PUBLICATION_PATH_LOCAL))
     assert num_models_after == num_models_before + 1
+
+
+def test_parse_args_reads_command_line_arguments() -> None:
+    """Tests that parse_args reads the command line arguments."""
+    saved_argv = sys.argv
+    sys.argv = ['imagegen/train_model.py']
+    args = train_model.parse_args()
+    assert not args.load_gan and not args.load_wgan
+    sys.argv = ['imagegen/train_model.py', '--load_gan', 'my/gan']
+    args = train_model.parse_args()
+    assert args.load_gan == 'my/gan'
+    assert not args.load_wgan
+    sys.argv = ['imagegen/train_model.py', '--load_wgan', 'my/wgan']
+    args = train_model.parse_args()
+    assert not args.load_gan
+    assert args.load_wgan == 'my/wgan'
+    sys.argv = saved_argv
+
+
+def test_parse_args_no_path_raises_error() -> None:
+    """Tests that parse_args raises SystemExit when load flags are specified
+    without a path."""
+    saved_argv = sys.argv
+    for bad_argv in (['imagegen/train_model.py', '--load_gan'],
+                     ['imagegen/train_model.py', '--load_wgan']):
+        sys.argv = bad_argv
+        with pytest.raises(SystemExit):
+            _ = train_model.parse_args()
+    sys.argv = saved_argv
+
+
+def test_parse_args_two_load_paths_raises_error() -> None:
+    """Tests that parse_args raises IncompatibleCommandLineArgumentsError when
+    multiple load paths are specified."""
+    saved_argv = sys.argv
+    sys.argv = ['imagegen/train_model.py',
+                '--load_gan', 'my/gan',
+                '--load_wgan', 'my/wgan']
+    with pytest.raises(IncompatibleCommandLineArgumentsError):
+        _ = train_model.parse_args()
+    sys.argv = saved_argv

@@ -2,11 +2,12 @@
 # pylint: disable=no-name-in-module
 
 import os
+from argparse import ArgumentParser, Namespace
 from typing import Optional
 from datetime import datetime
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, Reshape, \
-    Conv2DTranspose, BatchNormalization, LeakyReLU
+    Conv2DTranspose, BatchNormalization, LeakyReLU, Cropping2D, Dropout
 from tensorflow.keras.optimizers import RMSprop
 from tensorflow.keras.activations import linear
 from mlops.errors import PublicationPathAlreadyExistsError
@@ -17,6 +18,7 @@ from imagegen.publish_dataset import publish_dataset, \
     DATASET_PUBLICATION_PATH_LOCAL, DATASET_VERSION
 from imagegen.gan import GAN
 from imagegen.wgan import WGAN, DEFAULT_RMSPROP_LR
+from imagegen.errors import IncompatibleCommandLineArgumentsError
 
 MODEL_PUBLICATION_PATH_LOCAL = os.path.join('models', 'versioned')
 MODEL_PUBLICATION_PATH_S3 = \
@@ -32,30 +34,47 @@ def _get_baseline_gan_generator() -> Model:
     """
     generator = Sequential()
     # Shape: (None, generator_input_dim).
-    generator.add(Dense(15 * 15 * 16,
+    generator.add(Dense(4 * 4 * 512,
+                        use_bias=False,
                         input_shape=(DEFAULT_GEN_INPUT_DIM,)))
-    # Shape: (None, 3600).
-    generator.add(Reshape(target_shape=(15, 15, 16)))
-    # Shape: (None, 15, 15, 16)
+    # Shape: (None, 8192).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
+    generator.add(Reshape(target_shape=(4, 4, 512)))
+    # Shape: (None, 4, 4, 512)
+    generator.add(Conv2DTranspose(256,
+                                  kernel_size=3,
+                                  strides=2,
+                                  padding='same'))
+    # Shape: (None, 8, 8, 256).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
+    generator.add(Conv2DTranspose(128,
+                                  kernel_size=3,
+                                  strides=2,
+                                  padding='same'))
+    # Shape: (None, 16, 16, 128).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
+    generator.add(Conv2DTranspose(64,
+                                  kernel_size=3,
+                                  strides=2,
+                                  padding='same'))
+    # Shape: (None, 32, 32, 64).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
+    generator.add(Conv2DTranspose(32,
+                                  kernel_size=3,
+                                  strides=2,
+                                  padding='same'))
+    # Shape: (None, 64, 64, 32).
+    generator.add(BatchNormalization())
+    generator.add(LeakyReLU(alpha=0.1))
     generator.add(Conv2DTranspose(16,
                                   kernel_size=3,
                                   strides=2,
                                   padding='same'))
-    # Shape: (None, 30, 30, 16).
-    generator.add(BatchNormalization())
-    generator.add(LeakyReLU(alpha=0.1))
-    generator.add(Conv2DTranspose(8,
-                                  kernel_size=3,
-                                  strides=2,
-                                  padding='same'))
-    # Shape: (None, 60, 60, 8).
-    generator.add(BatchNormalization())
-    generator.add(LeakyReLU(alpha=0.1))
-    generator.add(Conv2DTranspose(4,
-                                  kernel_size=3,
-                                  strides=2,
-                                  padding='same'))
-    # Shape: (None, 120, 120, 4).
+    # Shape: (None, 128, 128, 16).
     generator.add(BatchNormalization())
     generator.add(LeakyReLU(alpha=0.1))
     generator.add(Conv2DTranspose(3,
@@ -63,6 +82,8 @@ def _get_baseline_gan_generator() -> Model:
                                   activation='sigmoid',
                                   strides=1,
                                   padding='same'))
+    # Shape: (None, 128, 128, 3).
+    generator.add(Cropping2D((4, 4)))
     # Shape: (None, 120, 120, 3).
     generator.compile()
     return generator
@@ -78,23 +99,26 @@ def _get_baseline_gan_discriminator(dataset: VersionedDataset) -> Model:
     discriminator = Sequential()
     # Shape: (None, 120, 120, 3).
     discriminator.add(
-        Conv2D(4, (3, 3), activation='relu', padding='same', strides=2,
+        Conv2D(128, (3, 3), activation='relu', padding='same', strides=2,
                input_shape=dataset.X_train.shape[1:]))
-    # Shape: (None, 60, 60, 4).
+    # Shape: (None, 60, 60, 128).
     discriminator.add(
-        Conv2D(8, (3, 3), activation='relu', padding='same', strides=2))
-    # Shape: (None, 30, 30, 8).
+        Conv2D(256, (3, 3), activation='relu', padding='same', strides=2))
+    # Shape: (None, 30, 30, 256).
     discriminator.add(
-        Conv2D(16, (3, 3), activation='relu', padding='same', strides=2))
-    # Shape: (None, 15, 15, 16).
+        Conv2D(512, (3, 3), activation='relu', padding='same', strides=2))
+    discriminator.add(Dropout(0.3))
+    # Shape: (None, 15, 15, 512).
     discriminator.add(
-        Conv2D(32, (3, 3), activation='relu', padding='same', strides=2))
-    # Shape: (None, 8, 8, 32).
+        Conv2D(512, (3, 3), activation='relu', padding='same', strides=2))
+    discriminator.add(Dropout(0.3))
+    # Shape: (None, 8, 8, 512).
     discriminator.add(
-        Conv2D(64, (3, 3), activation='relu', padding='same', strides=2))
-    # Shape: (None, 4, 4, 64).
+        Conv2D(1024, (3, 3), activation='relu', padding='same', strides=2))
+    # Shape: (None, 4, 4, 1024).
     discriminator.add(Flatten())
-    # Shape: (None, 1024).
+    # Shape: (None, 16384).
+    discriminator.add(Dropout(0.2))
     discriminator.add(Dense(1, activation='sigmoid'))
     # Shape: (None, 1).
     discriminator.compile()
@@ -164,20 +188,72 @@ def publish_gan(gan: GAN,
     return base_path
 
 
-def main() -> None:
-    """Runs the program."""
+def parse_args() -> Namespace:
+    """Returns the command line arguments.
+
+    :return: The command line arguments.
+    """
+    parser = ArgumentParser(description='Train and publish a model.')
+    parser.add_argument(
+        '--load_gan',
+        metavar='gan_path',
+        type=str,
+        help='(Optional) continue training the GAN (not WGAN) at the given '
+             'path. A new model will be published.'
+    )
+    parser.add_argument(
+        '--load_wgan',
+        metavar='wgan_path',
+        type=str,
+        help='(Optional) continue training the WGAN (not GAN) at the given '
+             'path. A new model will be published.'
+    )
+    args = parser.parse_args()
+    if args.load_gan and args.load_wgan:
+        raise IncompatibleCommandLineArgumentsError(
+            'Cannot specify both --load_gan and --load_wgan.')
+    return args
+
+
+def train_model(args: Namespace) -> None:
+    """Trains and publishes a model based on the command line arguments.
+
+    :param args: The command line arguments.
+    """
     try:
         dataset_path = publish_dataset(DATASET_PUBLICATION_PATH_LOCAL)
     except PublicationPathAlreadyExistsError:
         dataset_path = os.path.join(DATASET_PUBLICATION_PATH_LOCAL,
                                     DATASET_VERSION)
     dataset = VersionedDataset(dataset_path)
-    gan = get_baseline_wgan(dataset)
+    if not args.load_gan and not args.load_wgan:
+        print('Training new model.')
+        gan = get_baseline_wgan(dataset)
+    else:
+        base_path = args.load_gan if args.load_gan else args.load_wgan
+        generator_base_path = os.path.join(base_path, 'generator')
+        discriminator_base_path = os.path.join(base_path, 'discriminator')
+        generator_path = os.path.join(
+            generator_base_path,
+            os.listdir(generator_base_path)[0],
+            'model.h5'
+        )
+        discriminator_path = os.path.join(
+            discriminator_base_path,
+            os.listdir(discriminator_base_path)[0],
+            'model.h5'
+        )
+        if args.load_gan:
+            print(f'Continuing GAN training from {base_path}')
+            gan = GAN.load(generator_path, discriminator_path)
+        else:
+            print(f'Continuing WGAN training from {base_path}')
+            gan = WGAN.load(generator_path, discriminator_path)
     training_config = gan.train(
         dataset,
         use_wandb=False,
         batch_size=32,
-        epochs=5
+        epochs=1
     )
     publish_gan(
         gan,
@@ -185,6 +261,11 @@ def main() -> None:
         training_config,
         MODEL_PUBLICATION_PATH_LOCAL,
         tags=TAGS)
+
+
+def main() -> None:
+    """Runs the program."""
+    train_model(parse_args())
 
 
 if __name__ == '__main__':
