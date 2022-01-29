@@ -60,13 +60,11 @@ class PokemonGenerationDataProcessor(InvertibleDataProcessor):
         image_filenames = [
             filename for filename in
             os.listdir(os.path.join(dataset_path, IMAGES_DIRNAME))
-            if filename.endswith('.jpg') or filename.endswith('.png')]
+            if filename.endswith('.png')]
         for filename in image_filenames:
             full_path = os.path.join(dataset_path, IMAGES_DIRNAME, filename)
             # Discard alpha channel.
             tensor = imread(full_path)[:, :, :3]
-            if filename.endswith('.jpg'):
-                tensor = tensor.astype(np.float32) / 255
             X.append(tensor)
         X = np.array(X)
         features = {}

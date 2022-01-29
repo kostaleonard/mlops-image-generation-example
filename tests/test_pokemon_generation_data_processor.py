@@ -8,6 +8,7 @@ from imagegen.pokemon_generation_data_processor import \
 from imagegen.errors import AttemptToUseLabelsError
 
 EXPECTED_FEATURE_SHAPE = HEIGHT, WIDTH, CHANNELS
+MAX_BACKGROUND_GRAYSCALE = 10 / 255
 
 
 def test_get_raw_features_and_labels_returns_expected_keys() -> None:
@@ -128,3 +129,12 @@ def test_unpreprocess_labels_raises_error() -> None:
     fake_labels = np.ones((5, 4))
     with pytest.raises(AttemptToUseLabelsError):
         _ = processor.unpreprocess_labels(fake_labels)
+
+
+def test_images_have_black_background() -> None:
+    """Tests that input images have a black (not white) background."""
+    processor = PokemonGenerationDataProcessor()
+    features = processor.get_preprocessed_features(DEFAULT_DATASET_PATH)
+    images_upper_left_corner = features['X_train'][:, :5, :5, :]
+    rgb_mean = images_upper_left_corner.mean(axis=-1)
+    assert rgb_mean.max() <= MAX_BACKGROUND_GRAYSCALE
